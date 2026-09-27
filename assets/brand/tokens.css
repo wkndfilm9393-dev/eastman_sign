@@ -1,0 +1,26 @@
+/* Eastman Film Lab design tokens — see BRAND.md */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
+
+:root {
+  --eastman-orange: #F6853D;
+  --ink: #000000;
+  --paper: #F5F5F5;
+  --white: #FFFFFF;
+
+  /* tints on black */
+  --orange-72: #B1602C; /* sub-lines, footnotes */
+  --orange-60: #985225; /* section labels */
+  --orange-28: #452511; /* hairlines */
+
+  /* tints on orange */
+  --ink-70: #492712;    /* section labels */
+  --ink-55: #6E3B1B;    /* dimmed text */
+  --ink-32: #A75A29;    /* hairlines */
+
+  --grey-72: #484848;   /* secondary text on paper */
+
+  --font-wordmark: "Helvetica Neue", Helvetica, Inter, Arial, sans-serif;
+  --font-ko: Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --tracking-wordmark: -0.03em;
+  --tracking-label: 0.18em;
+}
