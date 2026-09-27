@@ -49,6 +49,10 @@ Eastman Orange still leads the palette: calm scenes like the clock stay orange, 
 
 The LEDs blend between neighbouring colors in this order, looping back to orange after magenta.
 
+## Exception: neon red-orange (neon signs only)
+
+The neon wall sign in `designs/neon-signs/` uses **Neon Red-Orange `#FF5A2C`** for its main tubes, because that is the natural color of real neon gas and the owner asked for orange-red. Secondary lines use Eastman Orange `#F6853D`. Each tube's hot core is its color mixed about 72% toward white. The wordmark stays Helvetica Neue Bold, as a lit outline.
+
 ## Typography
 
 | Role | Look in the reference | Recommended font |
