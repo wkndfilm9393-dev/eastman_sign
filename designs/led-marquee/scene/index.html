@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Eastman LED marquee — product render</title>
+<style>html,body{margin:0;background:#0b0a09;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/three/build/three.module.js","three/addons/":"/three/examples/jsm/"}}</script>
+</head>
+<body>
+<script type="module">
+// Suspended LED marquee: 160 x 60 x 18 cm box, four LED-matrix sides, glowing diffuser underneath.
+// Units are metres. window.renderAt(seconds) draws one deterministic frame.
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const q = new URLSearchParams(location.search);
+const WIDTH = Number(q.get('w') || 2400), HEIGHT = Number(q.get('h') || 1600);
+const ORANGE = '#F6853D';
+const FRONT_TEXT = 'EASTMAN FILMLAB';
+const TICKER_TEXT = 'C-41 • B&W • E-6 • SCAN • PRINT • 35MM / 120';
+const LOOP = 10;                       // seconds; tickers loop exactly once per LOOP
+const W = 1.6, D = 0.6, H = 0.18;      // sign size
+const PITCH = 0.01, BORDER = 0.009;    // 10 mm LED pitch, frame border
+const PX = 22;                         // texture pixels per LED
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(WIDTH, HEIGHT);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.95;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.22;
+
+// Camera: 35 mm lens on full frame (24 mm tall sensor), below and to the front-right.
+const camera = new THREE.PerspectiveCamera(2 * Math.atan(12 / 35) * 180 / Math.PI, WIDTH / HEIGHT, 0.05, 50);
+camera.position.set(1.62, -0.74, 1.92);
+camera.lookAt(0.02, -0.035, 0);
+
+// Seamless dark studio backdrop (screen-space), warm-grey falloff with a faint orange haze under the sign.
+const bgc = document.createElement('canvas'); bgc.width = 1200; bgc.height = 800;
+const bg = bgc.getContext('2d');
+let grd = bg.createRadialGradient(560, 330, 20, 560, 330, 900);
+grd.addColorStop(0, '#2a2724'); grd.addColorStop(0.45, '#161412'); grd.addColorStop(1, '#070606');
+bg.fillStyle = grd; bg.fillRect(0, 0, 1200, 800);
+grd = bg.createRadialGradient(600, 470, 10, 600, 470, 520);
+grd.addColorStop(0, 'rgba(246,133,61,0.20)'); grd.addColorStop(1, 'rgba(246,133,61,0)');
+bg.fillStyle = grd; bg.fillRect(0, 0, 1200, 800);
+const bgt = new THREE.CanvasTexture(bgc); bgt.colorSpace = THREE.SRGBColorSpace;
+scene.background = bgt;
+
+// ---------- LED matrix textures ----------
+function textDots(str, rows, maxCols) {
+  const c = document.createElement('canvas'), g = c.getContext('2d');
+  let px = Math.round(rows / 0.72);
+  const font = (p) => `700 ${p}px "Helvetica Neue", Helvetica, "Liberation Sans", Arial, sans-serif`;
+  g.font = font(px);
+  while (maxCols && g.measureText(str).width > maxCols && px > 6) { px--; g.font = font(px); }
+  const w = Math.ceil(g.measureText(str).width) + 2, h = px * 2;
+  c.width = w; c.height = h;
+  g.font = font(px); g.fillStyle = '#fff'; g.textBaseline = 'alphabetic';
+  g.fillText(str, 1, Math.round(h * 0.68));
+  const a = g.getImageData(0, 0, w, h).data;
+  let top = h, bot = -1, left = w, right = -1;
+  const on = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (a[(y * w + x) * 4 + 3] > 120) {
+    on[y * w + x] = 1; top = Math.min(top, y); bot = Math.max(bot, y); left = Math.min(left, x); right = Math.max(right, x);
+  }
+  return { w, h, on, top, bot, left, right, tw: right - left + 1, th: bot - top + 1 };
+}
+
+function makeFace(faceW, faceH) {
+  const cols = Math.floor((faceW - 2 * BORDER) / PITCH), rows = Math.floor((faceH - 2 * BORDER) / PITCH);
+  const base = document.createElement('canvas'), glow = document.createElement('canvas');
+  base.width = glow.width = cols * PX; base.height = glow.height = rows * PX;
+  const bt = new THREE.CanvasTexture(base), gt = new THREE.CanvasTexture(glow);
+  bt.colorSpace = gt.colorSpace = THREE.SRGBColorSpace;
+  bt.anisotropy = gt.anisotropy = 8;
+  // Static base: black panel with unlit LED lenses.
+  const b = base.getContext('2d');
+  b.fillStyle = '#060606'; b.fillRect(0, 0, base.width, base.height);
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    const cx = (x + 0.5) * PX, cy = (y + 0.5) * PX, r = PX * 0.36;
+    const gr = b.createRadialGradient(cx - r * 0.3, cy - r * 0.3, 0, cx, cy, r);
+    gr.addColorStop(0, '#3a3430'); gr.addColorStop(1, '#141210');
+    b.fillStyle = gr; b.beginPath(); b.arc(cx, cy, r, 0, Math.PI * 2); b.fill();
+  }
+  bt.needsUpdate = true;
+  const mat = new THREE.MeshStandardMaterial({ map: bt, emissiveMap: gt, emissive: 0xffffff, emissiveIntensity: 1.35, roughness: 0.62, metalness: 0.0 });
+  const geo = new THREE.PlaneGeometry(cols * PITCH, rows * PITCH);
+  return { cols, rows, glow, gt, mat, mesh: new THREE.Mesh(geo, mat) };
+}
+
+function paintLit(face, dotsFn) {
+  const g = face.glow.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, face.glow.width, face.glow.height);
+  for (let y = 0; y < face.rows; y++) for (let x = 0; x < face.cols; x++) {
+    const v = dotsFn(x, y);
+    if (!v) continue;
+    const cx = (x + 0.5) * PX, cy = (y + 0.5) * PX, r = PX * 0.38;
+    const gr = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+    gr.addColorStop(0, '#FFD7B4'); gr.addColorStop(0.45, ORANGE); gr.addColorStop(1, 'rgba(246,133,61,0)');
+    g.globalAlpha = v; g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+  }
+  g.globalAlpha = 1;
+  face.gt.needsUpdate = true;
+}
+
+// ---------- Sign body ----------
+const sign = new THREE.Group();
+scene.add(sign);
+const metal = new THREE.MeshStandardMaterial({ color: '#0d0d0d', roughness: 0.38, metalness: 0.75 });
+sign.add(new THREE.Mesh(new THREE.BoxGeometry(W, H, D), metal));
+
+const off = 0.0012;
+const front = makeFace(W, H), back = makeFace(W, H), right = makeFace(D, H), left = makeFace(D, H);
+front.mesh.position.set(0, 0, D / 2 + off);
+back.mesh.position.set(0, 0, -D / 2 - off); back.mesh.rotation.y = Math.PI;
+right.mesh.position.set(W / 2 + off, 0, 0); right.mesh.rotation.y = Math.PI / 2;
+left.mesh.position.set(-W / 2 - off, 0, 0); left.mesh.rotation.y = -Math.PI / 2;
+[front, back, right, left].forEach((f) => sign.add(f.mesh));
+
+// Diffuser underneath: warm, slightly brighter toward the centre like a real edge-lit panel.
+const dc = document.createElement('canvas'); dc.width = 1024; dc.height = 384;
+const dg = dc.getContext('2d');
+const dgr = dg.createRadialGradient(512, 192, 40, 512, 192, 620);
+dgr.addColorStop(0, '#FF9C58'); dgr.addColorStop(0.6, '#F7843D'); dgr.addColorStop(1, '#E66B28');
+dg.fillStyle = dgr; dg.fillRect(0, 0, 1024, 384);
+const dtex = new THREE.CanvasTexture(dc); dtex.colorSpace = THREE.SRGBColorSpace;
+const diffuser = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.024, D - 0.024),
+  new THREE.MeshStandardMaterial({ color: '#000', emissive: 0xffffff, emissiveMap: dtex, emissiveIntensity: 0.8, roughness: 0.9 }));
+diffuser.rotation.x = Math.PI / 2;
+diffuser.position.y = -H / 2 - off;
+sign.add(diffuser);
+
+// Suspension rods with ceiling-side caps and small clevis blocks on the sign top.
+const rodMat = new THREE.MeshStandardMaterial({ color: '#1c1c1c', roughness: 0.28, metalness: 0.9 });
+for (const x of [-0.56, 0.56]) {
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0055, 4, 24), rodMat);
+  rod.position.set(x, H / 2 + 2, 0);
+  sign.add(rod);
+  const block = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.018, 0.03), rodMat);
+  block.position.set(x, H / 2 + 0.009, 0);
+  sign.add(block);
+}
+
+// ---------- Lighting ----------
+RectAreaLightUniformsLib.init();
+const down = new THREE.RectAreaLight(ORANGE, 4, W - 0.03, D - 0.03);
+down.position.set(0, -H / 2 - 0.004, 0);
+down.lookAt(0, -5, 0);
+scene.add(down);
+const spill = new THREE.PointLight(ORANGE, 2.2, 6, 1.6); spill.position.set(0, 0.05, -0.7); scene.add(spill);
+const spill2 = new THREE.PointLight(ORANGE, 0.9, 5, 1.6); spill2.position.set(1.3, 0.05, -0.2); scene.add(spill2);
+const wash = new THREE.SpotLight('#cfd4da', 6, 9, 0.5, 0.9, 1.4); wash.position.set(-3.2, 1.4, 1.5); wash.target.position.set(-0.8, 0.2, -3.4); scene.add(wash, wash.target);
+const key = new THREE.DirectionalLight('#dfe3e8', 0.55); key.position.set(-2.5, 3, 2.5); scene.add(key);
+const rim = new THREE.DirectionalLight('#dfe3e8', 0.9); rim.position.set(1.5, 2.5, -3); scene.add(rim);
+scene.add(new THREE.AmbientLight('#ffffff', 0.05));
+
+// ---------- Post ----------
+const composer = new EffectComposer(renderer);
+composer.setSize(WIDTH, HEIGHT);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(WIDTH, HEIGHT), 0.32, 0.3, 0.9));
+composer.addPass(new OutputPass());
+
+// ---------- Content ----------
+const frontDots = textDots(FRONT_TEXT, front.rows - 3, front.cols - 8);
+const tickDots = textDots(TICKER_TEXT, right.rows - 3, 0);
+const GAP = 14;
+const span = tickDots.tw + GAP;
+const inText = (m, x, y) => x >= 0 && y >= 0 && x < m.tw && y < m.th && m.on[(y + m.top) * m.w + x + m.left] === 1;
+
+function ticker(face, t, phase) {
+  const shift = Math.floor(((t / LOOP + phase) % 1) * span);
+  const y0 = Math.floor((face.rows - tickDots.th) / 2);
+  paintLit(face, (x, y) => {
+    const u = (((x + shift) % span) + span) % span;
+    return inText(tickDots, u, y - y0) ? 1 : 0;
+  });
+}
+
+const fx0 = Math.floor((front.cols - frontDots.tw) / 2), fy0 = Math.floor((front.rows - frontDots.th) / 2);
+paintLit(front, (x, y) => (inText(frontDots, x - fx0, y - fy0) ? 1 : 0));
+
+window.renderAt = (t) => {
+  ticker(right, t, 0.0);
+  ticker(back, t, 0.33);
+  ticker(left, t, 0.66);
+  composer.render();
+  return true;
+};
+await document.fonts.ready;
+window.renderAt(Number(q.get('t') || 2.2));
+window.ready = true;
+</script>
+</body>
+</html>
