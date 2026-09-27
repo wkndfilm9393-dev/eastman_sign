@@ -14,10 +14,10 @@ body{margin:0;background:#000000}
 </style>
 </helmet>
 <div style="width: 800px; height: 1000px; background: #000000; overflow: hidden">
-<canvas data-led="1" ref="{{setCanvas}}" role="img" aria-label="Animated orange LED sign shaped like a 35mm film frame, hanging from a wall bracket at night" style="width: 800px; height: 1000px; display: block"></canvas>
+<canvas data-led="1" ref="{{setCanvas}}" role="img" aria-label="Animated multicolor LED sign shaped like a 35mm film frame, hanging from a wall bracket at night" style="width: 800px; height: 1000px; display: block"></canvas>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"shape":{"editor":"enum","options":["frame","aperture","canister"],"default":"frame"},"program":{"editor":"enum","options":["loop","wordmark","countdown","roll3d","tunnel","iris","filmstrip","e3d","lightleak","korean","clock","strobe"],"default":"loop"},"speed":{"editor":"range","min":0.25,"max":2,"step":0.05,"default":1},"glow":{"editor":"boolean","default":true},"$preview":{"width":800,"height":1000}}'>
+<script type="text/x-dc" data-dc-script data-props='{"shape":{"editor":"enum","options":["frame","aperture","canister"],"default":"frame"},"palette":{"editor":"enum","options":["rave","brand"],"default":"rave"},"program":{"editor":"enum","options":["loop","wordmark","countdown","tunnel","roll3d","equalizer","iris","kaleido","filmstrip","e3d","lightleak","burst","korean","clock","strobe"],"default":"loop"},"bpm":{"editor":"int","min":90,"max":160,"default":128},"speed":{"editor":"range","min":0.25,"max":2,"step":0.05,"default":1},"glow":{"editor":"boolean","default":true},"$preview":{"width":800,"height":1000}}'>
 class Component extends DCLogic {
   renderVals() {
     if (!this._sc) this._sc = (el) => { if (el) this.canvas = el; };
@@ -28,7 +28,8 @@ class Component extends DCLogic {
     this.DEF = 'frame';
     this.SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
     this.KR = '"Noto Sans KR", "Apple SD Gothic Neo", sans-serif';
-    this.t = 0; this.last = 0; this.cache = {}; this.fontsOk = false;
+    this.t = 0; this.last = 0; this.dt = 0.016; this.cache = {}; this.fontsOk = false;
+    this.parts = []; this.peaks = []; this.lastBeat = -1; this._o = { v: 0, c: 0 };
     const ok = () => { this.fontsOk = true; this.cache = {}; this._ce = null; };
     if (document.fonts && document.fonts.load) {
       document.fonts.load('900 24px "Noto Sans KR"', '현상스캔인화').then(ok, ok);
@@ -48,14 +49,29 @@ class Component extends DCLogic {
     const dt = this.last ? Math.min(0.1, (ts - this.last) / 1000) : 0.016;
     this.last = ts;
     const speed = this.props.speed ?? 1;
-    this.t += dt * speed;
+    this.dt = dt * speed;
+    this.t += this.dt;
+    const pal = this.props.palette ?? 'rave';
+    if (pal !== this.palKey) { this.palKey = pal; this.lut = this.makeLut(pal); }
     const shape = this.props.shape ?? this.DEF;
     if (!this.sign || this.sign.shape !== shape) this.sign = this.makeSign(shape);
     const S = this.sign;
-    const k = Math.exp(-dt * speed * 12);
+    const k = Math.exp(-this.dt * 12);
     for (let i = 0; i < S.buf.length; i++) S.buf[i] *= k;
     this.runProgram(S, this.t);
     this.draw(cv.getContext('2d'), W, H, dpr, S);
+  }
+
+  makeLut(pal) {
+    const P = pal === 'brand'
+      ? [[246, 133, 61]]
+      : [[246, 133, 61], [255, 194, 26], [43, 217, 107], [34, 200, 240], [122, 92, 255], [255, 61, 168]];
+    const L = [];
+    for (let s = 0; s < 36; s++) {
+      const f = s / 36 * P.length, i = Math.floor(f), u = f - i, a = P[i % P.length], b = P[(i + 1) % P.length];
+      L.push([0, 1, 2].map((k) => Math.round(a[k] + (b[k] - a[k]) * u)));
+    }
+    return L;
   }
 
   makeSign(shape) {
@@ -91,11 +107,11 @@ class Component extends DCLogic {
       }
       img = { x0: 0, y0: 5, x1: gw, y1: gh - 5 };
     }
-    return { shape, gw, gh, mask: m, img, buf: new Float32Array(gw * gh) };
+    return { shape, gw, gh, mask: m, img, buf: new Float32Array(gw * gh), col: new Float32Array(gw * gh) };
   }
 
   runProgram(S, t) {
-    const P = [['wordmark', 7], ['countdown', 4], ['roll3d', 7], ['tunnel', 6], ['iris', 6], ['filmstrip', 6], ['e3d', 7], ['lightleak', 6], ['korean', 7], ['clock', 5], ['strobe', 2.4]];
+    const P = [['wordmark', 5], ['countdown', 4], ['tunnel', 5], ['roll3d', 5], ['equalizer', 5], ['iris', 4], ['kaleido', 5], ['filmstrip', 4], ['e3d', 5], ['lightleak', 5], ['burst', 4], ['korean', 6], ['clock', 4], ['strobe', 2.4]];
     const pin = this.props.program ?? 'loop';
     let fx = P[0][0], d = P[0][1], lt = 0;
     if (pin !== 'loop') {
@@ -106,8 +122,16 @@ class Component extends DCLogic {
       let r = t % total;
       for (const p of P) { if (r < p[1]) { fx = p[0]; d = p[1]; lt = r; break; } r -= p[1]; }
     }
+    const b = t * (this.props.bpm ?? 128) / 60;
+    this.B = { n: Math.floor(b), pulse: Math.pow(1 - (b % 1), 3) };
     this['fx_' + fx](S, lt, d);
     if (fx !== 'strobe') this.chase(S, t);
+    if (pin === 'loop' && lt < 0.12 && fx !== 'countdown') {
+      const f = 1 - lt / 0.12;
+      for (let i = 0; i < S.buf.length; i++) {
+        if (S.mask[i] && f > S.buf[i]) { S.buf[i] = f; S.col[i] = (i % S.gw) / S.gw; }
+      }
+    }
   }
 
   geo(S) {
@@ -115,37 +139,40 @@ class Component extends DCLogic {
     return { x0: g.x0, y0: g.y0, iw, ih, cx: g.x0 + (iw - 1) / 2, cy: g.y0 + (ih - 1) / 2, R: Math.min(iw, ih) / 2 };
   }
 
-  put(S, x, y, v) {
+  put(S, x, y, v, c) {
     const g = S.img;
     if (x < g.x0 || y < g.y0 || x >= g.x1 || y >= g.y1) return;
     const i = y * S.gw + x;
-    if (S.mask[i] && S.buf[i] < v) S.buf[i] = v;
+    if (S.mask[i] && S.buf[i] < v) { S.buf[i] = v; S.col[i] = c || 0; }
   }
 
   each(S, fn) {
-    const g = S.img;
+    const g = S.img, o = this._o;
     for (let y = g.y0; y < g.y1; y++) for (let x = g.x0; x < g.x1; x++) {
       const i = y * S.gw + x;
       if (!S.mask[i]) continue;
-      const v = fn(x, y);
-      if (v > S.buf[i]) S.buf[i] = v;
+      o.v = 0; o.c = 0;
+      fn(x, y, o);
+      if (o.v > S.buf[i]) { S.buf[i] = o.v; S.col[i] = o.c; }
     }
   }
 
   chase(S, t) {
-    const step = Math.floor(t * 12);
+    const step = Math.floor(t * 14);
     for (let y = 0; y < S.gh; y++) for (let x = 0; x < S.gw; x++) {
       const i = y * S.gw + x;
       if (S.mask[i] !== 2) continue;
-      let v;
+      let v, c;
       if (S.shape === 'aperture') {
         const a = Math.floor((Math.atan2(y - 23.5, x - 23.5) + Math.PI) / (2 * Math.PI) * 48);
         v = (((a - step) % 6) + 6) % 6 === 0 ? 1 : 0.22;
+        c = a / 48 + t * 0.2;
       } else {
         const pos = y < S.gh / 2 ? x - step : x + step;
         v = ((pos % 7) + 7) % 7 === 0 ? 1 : 0.22;
+        c = x / S.gw + t * 0.2;
       }
-      if (v > S.buf[i]) S.buf[i] = v;
+      if (v > S.buf[i]) { S.buf[i] = v; S.col[i] = c; }
     }
   }
 
@@ -178,57 +205,63 @@ class Component extends DCLogic {
     return m;
   }
 
-  stamp(S, m, ox, oy, v) {
+  stamp(S, m, ox, oy, v, c) {
     for (let y = m.top; y <= m.bot; y++) for (let x = m.left; x <= m.right; x++) {
-      if (m.data[y * m.w + x]) this.put(S, Math.round(ox + x - m.left), Math.round(oy + y - m.top), v);
+      if (!m.data[y * m.w + x]) continue;
+      const gx = Math.round(ox + x - m.left), gy = Math.round(oy + y - m.top);
+      this.put(S, gx, gy, v, typeof c === 'function' ? c(gx, gy) : c);
     }
   }
 
-  stampC(S, m, cx, cy, v) {
+  stampC(S, m, cx, cy, v, c) {
     const tw = m.right - m.left + 1, th = m.bot - m.top + 1;
-    this.stamp(S, m, Math.round(cx - (tw - 1) / 2), Math.round(cy - (th - 1) / 2), v);
+    this.stamp(S, m, Math.round(cx - (tw - 1) / 2), Math.round(cy - (th - 1) / 2), v, c);
   }
 
-  scrollText(S, str, px, family, weight, spacing, lt, cps) {
+  scrollText(S, str, px, family, weight, spacing, lt, cps, v, c) {
     const g = this.geo(S);
     const m = this.textMask(str, px, family, weight, spacing);
     const tw = m.right - m.left + 1, th = m.bot - m.top + 1;
     const span = tw + g.iw + 6;
     const x = g.x0 + g.iw - Math.floor((lt * cps) % span);
-    this.stamp(S, m, x, g.y0 + Math.round((g.ih - th) / 2), 1);
+    this.stamp(S, m, x, g.y0 + Math.round((g.ih - th) / 2), v, c);
   }
 
   fx_wordmark(S, lt) {
     const g = this.geo(S);
-    this.scrollText(S, 'EASTMAN FILM LAB', Math.round(Math.min(g.ih * 0.72, 26)), this.SANS, 700, '-0.5px', lt, 20);
+    this.scrollText(S, 'EASTMAN FILM LAB', Math.round(Math.min(g.ih * 0.72, 26)), this.SANS, 700, '-0.5px', lt, 24,
+      0.7 + 0.3 * this.B.pulse, (x) => x * 0.02 - lt * 0.4);
   }
 
   fx_korean(S, lt) {
     const g = this.geo(S);
-    this.scrollText(S, '현상 · 스캔 · 인화', Math.round(Math.min(g.ih * 0.72, 24)), this.KR, 900, null, lt, 18);
+    this.scrollText(S, '현상 · 스캔 · 인화', Math.round(Math.min(g.ih * 0.72, 24)), this.KR, 900, null, lt, 20,
+      0.7 + 0.3 * this.B.pulse, (x) => x * 0.03 + lt * 0.5);
   }
 
   fx_countdown(S, lt) {
     const g = this.geo(S);
     const n = 3 - Math.floor(lt);
-    if (n <= 0) { const f = Math.max(0, 1 - (lt - 3) * 1.4); this.each(S, () => f); return; }
-    const p = lt % 1, R = g.R - 0.5, TAU = Math.PI * 2;
-    this.each(S, (x, y) => {
+    if (n <= 0) {
+      const f = Math.max(0, 1 - (lt - 3) * 1.4);
+      this.each(S, (x, y, o) => { o.v = f; o.c = (x + y) * 0.02; });
+      return;
+    }
+    const p = lt % 1, R = g.R - 0.5, TAU = Math.PI * 2, sweepC = (3 - n) * 0.34 + 0.17;
+    this.each(S, (x, y, o) => {
       const dx = x - g.cx, dy = y - g.cy, d = Math.hypot(dx, dy);
       const a = (Math.atan2(dx, -dy) + TAU) % TAU;
-      let v = 0;
-      if (Math.abs(d - R * 0.92) < 0.7 || Math.abs(d - R * 0.72) < 0.6) v = 0.9;
-      if (Math.abs(dx) <= 0.5 || Math.abs(dy) <= 0.5) v = Math.max(v, 0.5);
-      if (d < R * 0.92 && a < p * TAU) v = Math.max(v, 0.3);
-      return v;
+      if (Math.abs(d - R * 0.92) < 0.7 || Math.abs(d - R * 0.72) < 0.6) { o.v = 0.9; return; }
+      if (Math.abs(dx) <= 0.5 || Math.abs(dy) <= 0.5) { o.v = 0.5; return; }
+      if (d < R * 0.92 && a < p * TAU) { o.v = 0.4; o.c = sweepC; }
     });
-    this.stampC(S, this.textMask(String(n), Math.round(R * 1.1), this.SANS, 700), g.cx, g.cy, 1);
+    this.stampC(S, this.textMask(String(n), Math.round(R * 1.1), this.SANS, 700), g.cx, g.cy, 1, 0);
   }
 
-  render3d(S, P, ang, tilt, sc, oy) {
+  render3d(S, P, ang, tilt, sc, oy, cfn) {
     const g = this.geo(S), N = S.gw * S.gh;
-    if (!this._zb || this._zb.length !== N) { this._zb = new Float32Array(N); this._vb = new Float32Array(N); }
-    const zb = this._zb, vb = this._vb;
+    if (!this._zb || this._zb.length !== N) { this._zb = new Float32Array(N); this._vb = new Float32Array(N); this._cb = new Float32Array(N); }
+    const zb = this._zb, vb = this._vb, cb2 = this._cb;
     zb.fill(1e9); vb.fill(0);
     const ca = Math.cos(ang), sa = Math.sin(ang), cb = Math.cos(tilt), sb = Math.sin(tilt);
     const L0 = -0.44, L1 = -0.54, L2 = -0.72;
@@ -246,9 +279,11 @@ class Component extends DCLogic {
       if (z2 >= zb[i]) continue;
       let dl = nx * L0 + ny2 * L1 + nz2 * L2;
       if (p[7]) dl = Math.abs(dl);
-      zb[i] = z2; vb[i] = (0.16 + 0.84 * Math.max(0, dl)) * p[6];
+      zb[i] = z2; vb[i] = (0.16 + 0.84 * Math.max(0, dl)) * p[6]; cb2[i] = cfn(p, x, y2);
     }
-    for (let i = 0; i < N; i++) if (zb[i] < 1e9 && S.mask[i] && vb[i] > S.buf[i]) S.buf[i] = vb[i];
+    for (let i = 0; i < N; i++) {
+      if (zb[i] < 1e9 && S.mask[i] && vb[i] > S.buf[i]) { S.buf[i] = vb[i]; S.col[i] = cb2[i]; }
+    }
   }
 
   cloudCanister() {
@@ -306,73 +341,134 @@ class Component extends DCLogic {
 
   fx_roll3d(S, lt) {
     const g = this.geo(S);
-    const sc = Math.min(g.ih / 2.9 * 0.95, g.iw / 3.8);
-    this.render3d(S, this.cloudCanister(), lt * 1.7, 0.4 + 0.2 * Math.sin(lt * 0.9), sc, sc * 0.15);
+    const sc = Math.min(g.ih / 2.9 * 0.95, g.iw / 3.8) * (1 + 0.07 * this.B.pulse);
+    this.render3d(S, this.cloudCanister(), lt * 2.1, 0.4 + 0.2 * Math.sin(lt * 1.2), sc, sc * 0.15,
+      (p) => p[1] * 0.3 + lt * 0.4);
   }
 
   fx_e3d(S, lt) {
-    const g = this.geo(S);
-    this.render3d(S, this.cloudE(), lt * 2.2, 0.25 * Math.sin(lt * 1.3), Math.min(g.ih, g.iw * 1.3) / 2 * 0.85, 0);
+    const g = this.geo(S), n = this.B.n;
+    this.render3d(S, this.cloudE(), lt * 2.6, 0.25 * Math.sin(lt * 1.6), Math.min(g.ih, g.iw * 1.3) / 2 * 0.85 * (1 + 0.08 * this.B.pulse), 0,
+      (p, x) => n * 0.17 + x * 0.05);
   }
 
   fx_tunnel(S, lt) {
-    const g = this.geo(S), TAU = Math.PI * 2;
-    const beat = Math.pow(1 - ((lt * 2) % 1), 2);
-    this.each(S, (x, y) => {
+    const g = this.geo(S), TAU = Math.PI * 2, pulse = this.B.pulse;
+    this.each(S, (x, y, o) => {
       const dx = (x - g.cx) / (g.iw / 2), dy = (y - g.cy) / (g.ih / 2);
       const d = S.shape === 'aperture' ? Math.hypot(dx, dy) : Math.max(Math.abs(dx), Math.abs(dy));
-      const ph = Math.log(d + 0.04) * 2.2 - lt * 1.8 + Math.atan2(dy, dx) / TAU * 2;
-      const f = ph - Math.floor(ph);
-      return (f < 0.38 ? 1 : 0.06) * (0.55 + 0.45 * beat);
+      const ph = Math.log(d + 0.04) * 2.4 - lt * 2.6 + Math.atan2(dy, dx) / TAU * 2;
+      const k = Math.floor(ph), f = ph - k;
+      o.v = (f < 0.42 ? 1 : 0.04) * (0.5 + 0.5 * pulse);
+      o.c = k * 0.17;
+    });
+  }
+
+  fx_equalizer(S, lt) {
+    const g = this.geo(S), nb = Math.ceil(g.iw / 3), P = this.B.pulse;
+    if (this.peaks.length !== nb) this.peaks = new Array(nb).fill(0);
+    const hs = [];
+    for (let k = 0; k < nb; k++) {
+      const boost = k < nb / 3 ? P * 0.45 : P * 0.15;
+      let h = 0.2 + 0.3 * Math.abs(Math.sin(k * 0.7 + lt * 6.3) * Math.sin(k * 0.23 - lt * 3.1)) + 0.25 * Math.abs(Math.sin(k * 1.9 + lt * 9.7)) + boost;
+      h = Math.min(1, h) * g.ih;
+      hs.push(h);
+      this.peaks[k] = Math.max(h, this.peaks[k] - this.dt * g.ih * 0.9);
+    }
+    this.each(S, (x, y, o) => {
+      const rx = x - g.x0;
+      if (rx % 3 === 2) return;
+      const k = Math.floor(rx / 3), fb = g.y0 + g.ih - 1 - y;
+      if (fb < hs[k]) { o.v = 1; o.c = fb / g.ih * 0.83; }
+      else if (fb === Math.round(this.peaks[k])) { o.v = 1; o.c = 0.9; }
     });
   }
 
   fx_iris(S, lt) {
     const g = this.geo(S), R = g.R;
-    const f = 0.5 + 0.5 * Math.cos(lt * 2.1);
-    const r = R * (0.12 + 0.78 * f), rot = (1 - f) * 1.1 + lt * 0.2;
+    const f = 0.5 + 0.5 * Math.cos(lt * 2.6);
+    const r = R * (0.12 + 0.78 * f), rot = (1 - f) * 1.1 + lt * 0.3;
+    const holeC = this.B.n * 0.17, holeV = 0.7 + 0.3 * this.B.pulse;
     const N = [];
     for (let k = 0; k < 6; k++) { const a = rot + k * Math.PI / 3; N.push([Math.cos(a), Math.sin(a)]); }
-    this.each(S, (x, y) => {
+    this.each(S, (x, y, o) => {
       const px = x - g.cx, py = y - g.cy, d = Math.hypot(px, py);
-      if (d > R + 0.3) return 0.04;
-      if (Math.abs(d - R) < 0.7) return 0.6;
+      if (d > R + 0.3) { o.v = 0.04; return; }
+      if (Math.abs(d - R) < 0.7) { o.v = 0.6; return; }
       let hd = -1e9;
       for (const n of N) hd = Math.max(hd, px * n[0] + py * n[1]);
-      if (hd < r) return 1;
+      if (hd < r) { o.v = holeV; o.c = holeC; return; }
+      o.c = holeC + 0.5;
       for (const n of N) {
-        if (Math.abs(px * n[0] + py * n[1] - r) < 0.55 && (-px * n[1] + py * n[0]) > r * 0.577) return 0.75;
+        if (Math.abs(px * n[0] + py * n[1] - r) < 0.55 && (-px * n[1] + py * n[0]) > r * 0.577) { o.v = 0.8; return; }
       }
-      return 0.1;
+      o.v = 0.12;
+    });
+  }
+
+  fx_kaleido(S, lt) {
+    const g = this.geo(S), seg = Math.PI / 3, P = this.B.pulse;
+    this.each(S, (x, y, o) => {
+      const dx = x - g.cx, dy = y - g.cy, r = Math.hypot(dx, dy) / g.R;
+      let a = Math.atan2(dy, dx) + lt * 0.6;
+      a = ((a % seg) + seg) % seg;
+      const af = Math.abs(a - seg / 2);
+      const val = Math.sin(r * 10 - lt * 5 + Math.sin(af * 6 + lt * 1.7) * 2.5);
+      o.v = (val > 0.25 ? 1 : val > -0.35 ? 0.2 : 0.03) * (0.55 + 0.45 * P);
+      o.c = r * 0.9 + lt * 0.3 + af * 0.4;
     });
   }
 
   fx_filmstrip(S, lt) {
-    const g = this.geo(S), vert = S.gh > S.gw * 1.2;
+    const g = this.geo(S), vert = S.gh > S.gw * 1.2, P = this.B.pulse;
     const A = vert ? g.iw : g.ih;
     const sh = Math.round(A * 0.82), fw = Math.round(sh * 1.25), a0 = Math.round((A - sh) / 2);
     const bw = Math.max(3, Math.round(sh * 0.16));
-    const pos = 8 * lt + 1.6 * lt * lt * lt;
-    this.each(S, (x, y) => {
+    const pos = 10 * lt + 2.4 * lt * lt * lt;
+    this.each(S, (x, y, o) => {
       const u = vert ? y - g.y0 : x - g.x0, q = (vert ? x - g.x0 : y - g.y0) - a0;
-      if (q < 0 || q >= sh) return 0;
+      if (q < 0 || q >= sh) return;
       const s = u + pos;
       if (q < bw || q >= sh - bw) {
         const inner = (q > 0 && q < bw - 1) || (q > sh - bw && q < sh - 1);
-        return inner && ((Math.floor(s) % 5) + 5) % 5 < 2 ? 0 : 0.85;
+        o.v = inner && ((Math.floor(s) % 5) + 5) % 5 < 2 ? 0 : 0.85;
+        return;
       }
-      const fr = ((s % fw) + fw) % fw;
-      if (fr < 1.5) return 0;
-      return Math.hypot(fr - fw / 2, q - sh / 2) < sh * 0.2 ? 0.7 : 0.16;
+      const fr = ((s % fw) + fw) % fw, fi = Math.floor(s / fw);
+      if (fr < 1.5) return;
+      o.c = fi * 0.17;
+      o.v = Math.hypot(fr - fw / 2, q - sh / 2) < sh * 0.2 ? 0.7 + 0.3 * P : 0.18;
     });
   }
 
   fx_lightleak(S, lt) {
     const g = this.geo(S);
-    this.each(S, (x, y) => {
-      const v0 = Math.sin(x * 0.23 + lt * 1.4) + Math.sin(y * 0.19 - lt * 1.1) + Math.sin((x + y) * 0.12 + lt * 0.8) + Math.sin(Math.hypot(x - g.cx, y - g.cy) * 0.35 - lt * 2.4);
-      const v = Math.pow((v0 + 4) / 8, 2.4) * 1.4;
-      return Math.min(1, Math.floor(v * 5) / 5);
+    this.each(S, (x, y, o) => {
+      const v0 = Math.sin(x * 0.23 + lt * 1.8) + Math.sin(y * 0.19 - lt * 1.4) + Math.sin((x + y) * 0.12 + lt * 1.0) + Math.sin(Math.hypot(x - g.cx, y - g.cy) * 0.35 - lt * 3);
+      const v = Math.pow((v0 + 4) / 8, 2.2) * 1.5;
+      o.v = Math.min(1, Math.floor(v * 5) / 5);
+      o.c = v0 * 0.12 + lt * 0.15;
+    });
+  }
+
+  fx_burst(S, lt) {
+    const g = this.geo(S), B = this.B;
+    if (lt < 0.05) this.parts = [];
+    if (B.n !== this.lastBeat) {
+      this.lastBeat = B.n;
+      const cx = g.cx + (Math.random() - 0.5) * g.iw * 0.5, cy = g.cy + (Math.random() - 0.5) * g.ih * 0.4;
+      const col = Math.floor(Math.random() * 6) / 6;
+      for (let k = 0; k < 46; k++) {
+        const a = Math.random() * Math.PI * 2, sp = 8 + Math.random() * 26;
+        this.parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, c: col + Math.random() * 0.15 });
+      }
+    }
+    const dt = this.dt;
+    this.parts = this.parts.filter((p) => {
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 14 * dt; p.vx *= 0.985; p.life -= dt * 1.1;
+      if (p.life <= 0) return false;
+      this.put(S, Math.round(p.x), Math.round(p.y), p.life, p.c);
+      return true;
     });
   }
 
@@ -387,12 +483,13 @@ class Component extends DCLogic {
     const ms = lines.map((s) => this.textMask(s, px, this.SANS, 700));
     const hs = ms.map((m) => m.bot - m.top + 1);
     let y = g.cy - (hs.reduce((a, b) => a + b, 0) + gap * (ms.length - 1) - 1) / 2;
-    ms.forEach((m, k) => { this.stampC(S, m, g.cx, y + (hs[k] - 1) / 2, 1); y += hs[k] + gap; });
+    ms.forEach((m, k) => { this.stampC(S, m, g.cx, y + (hs[k] - 1) / 2, 1, 0); y += hs[k] + gap; });
   }
 
   fx_strobe(S, lt) {
     if (((lt * 2.5) % 1) >= 0.4) return;
-    for (let i = 0; i < S.buf.length; i++) if (S.mask[i]) S.buf[i] = 1;
+    const c = Math.floor(lt * 2.5) * 0.17 + 0.5;
+    for (let i = 0; i < S.buf.length; i++) if (S.mask[i]) { S.buf[i] = 1; S.col[i] = c; }
   }
 
   draw(ctx, W, H, dpr, S) {
@@ -403,15 +500,26 @@ class Component extends DCLogic {
     const p = Math.min((W - wallW - 150) / S.gw, (H - 330) / S.gh, 12);
     const sw = S.gw * p, sh = S.gh * p;
     const sx = Math.round(wallW + (W - wallW - sw) / 2 + 10), sy = Math.round((H - sh) / 2 + 40);
+    const lut = this.lut, NS = lut.length;
 
-    let sum = 0, n = 0;
-    for (let i = 0; i < S.buf.length; i++) if (S.mask[i]) { sum += Math.min(1, S.buf[i]); n++; }
-    const avg = sum / n;
+    const levels = 12, bins = [];
+    let sv = 0, sr = 0, sg = 0, sbl = 0, n = 0;
+    for (let i = 0; i < S.buf.length; i++) {
+      if (!S.mask[i]) continue;
+      const v = Math.min(1, S.buf[i]);
+      const st = ((Math.floor(S.col[i] * NS) % NS) + NS) % NS;
+      const key = Math.round(v * levels) * NS + st;
+      (bins[key] || (bins[key] = [])).push(i);
+      const rgb = lut[st];
+      sv += v; sr += rgb[0] * v; sg += rgb[1] * v; sbl += rgb[2] * v; n++;
+    }
+    const avg = sv / n;
+    const sc = sv > 0 ? [sr / sv, sg / sv, sbl / sv].map(Math.round).join(',') : '246,133,61';
 
     const gx = sx + sw / 2, gy = sy + sh / 2;
     const gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, 640);
-    gr.addColorStop(0, 'rgba(246,133,61,' + (0.04 + avg * 0.3).toFixed(3) + ')');
-    gr.addColorStop(1, 'rgba(246,133,61,0)');
+    gr.addColorStop(0, 'rgba(' + sc + ',' + (0.04 + avg * 0.34).toFixed(3) + ')');
+    gr.addColorStop(1, 'rgba(' + sc + ',0)');
     ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
 
     ctx.fillStyle = 'rgba(72,72,72,0.35)'; ctx.fillRect(0, 0, wallW, H);
@@ -455,15 +563,12 @@ class Component extends DCLogic {
     const l = S.led.getContext('2d');
     l.setTransform(dpr, 0, 0, dpr, 0, 0);
     l.clearRect(0, 0, sw, sh);
-    const levels = 12, bins = [];
-    for (let k = 0; k <= levels; k++) bins.push([]);
-    for (let i = 0; i < S.buf.length; i++) if (S.mask[i]) bins[Math.round(Math.min(1, S.buf[i]) * levels)].push(i);
     const r = p * 0.36, TAU = Math.PI * 2;
-    for (let k = 0; k <= levels; k++) {
-      if (!bins[k].length) continue;
-      l.fillStyle = 'rgba(246,133,61,' + (0.1 + 0.9 * k / levels).toFixed(3) + ')';
+    for (const key in bins) {
+      const k = Math.floor(key / NS), rgb = lut[key % NS];
+      l.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (0.1 + 0.9 * k / levels).toFixed(3) + ')';
       l.beginPath();
-      for (const i of bins[k]) {
+      for (const i of bins[key]) {
         const x = (i % S.gw + 0.5) * p, y = (Math.floor(i / S.gw) + 0.5) * p;
         l.moveTo(x + r, y); l.arc(x, y, r, 0, TAU);
       }

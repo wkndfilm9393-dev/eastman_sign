@@ -32,6 +32,23 @@ The system has one accent color (orange) and one ink (black). Every secondary to
 
 The webp price list has `#F6843E`, which is the same orange with compression drift. Use `#F6853D`.
 
+## Exception: LED rave palette (animated LED signs only)
+
+The owner approved extra colors for the animated LED signs in `designs/led-signs/`. **This applies nowhere else:** print, menus and static signage stay orange and black.
+
+Eastman Orange still leads the palette: calm scenes like the clock stay orange, and the `brand` palette option switches a sign back to all-orange. The extra colors are named after film stocks and dyes:
+
+| Name | Hex |
+|---|---|
+| Eastman Orange | `#F6853D` |
+| Kodak Gold | `#FFC21A` |
+| Fuji Green | `#2BD96B` |
+| Ektachrome Cyan | `#22C8F0` |
+| UV Violet | `#7A5CFF` |
+| Dye Magenta | `#FF3DA8` |
+
+The LEDs blend between neighbouring colors in this order, looping back to orange after magenta.
+
 ## Typography
 
 | Role | Look in the reference | Recommended font |

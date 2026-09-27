@@ -1,6 +1,6 @@
 # LED blade sign concepts
 
-These are animated LED sign concepts in the style of the viral European pharmacy-cross signs, with a film-lab shape in place of the cross. They're drawn in Eastman orange `#F6853D` on black; see `BRAND.md` at the repo root.
+These are animated LED sign concepts in the style of the viral European pharmacy-cross signs, with a film-lab shape in place of the cross. They use the LED rave palette: Eastman orange plus film-stock colors, an exception approved for these signs only (see `BRAND.md`). The `palette` option `brand` switches a sign back to orange only.
 
 | Concept | Shape | Video |
 |---|---|---|
@@ -8,18 +8,21 @@ These are animated LED sign concepts in the style of the viral European pharmacy
 | B | Round lens aperture | `videos/eastman-led-b-aperture.mp4` |
 | C | 35mm film canister with the spool on top | `videos/eastman-led-c-film-canister.mp4` |
 
-All three run the same ~63-second program loop:
-1. Wordmark scroll
+All three run the same ~63-second program loop, synced to a 128 BPM beat, with a quick color flash between scenes:
+1. Wordmark scroll in a color sweep
 2. Film-leader countdown (3-2-1)
-3. Spinning 3D canister
-4. Spiral tunnel pulsing at 120 BPM
-5. Camera iris opening and closing
-6. Film strip that speeds up until it blurs
-7. Spinning 3D "E"
-8. "Light leak" pattern
-9. 현상 · 스캔 · 인화 scroll
-10. OPEN, then the current time
-11. Strobe
+3. Spiral tunnel with multicolor rings
+4. Spinning 3D canister in color bands
+5. Equalizer bars
+6. Camera iris that changes color on the beat
+7. Kaleidoscope
+8. Film strip that speeds up, each frame a different color
+9. Spinning 3D "E"
+10. "Light leak" color pattern
+11. Particle bursts on every beat
+12. 현상 · 스캔 · 인화 scroll
+13. OPEN, then the current time, in orange
+14. Color strobe
 
 The strobe flashes 2.5 times a second, below the three-flashes-per-second photosensitivity guideline.
 

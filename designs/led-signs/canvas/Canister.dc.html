@@ -14,15 +14,17 @@ body{margin:0;background:#000000}
 </style>
 </helmet>
 <div style="width: 800px; height: 1000px; background: #000000">
-<dc-import name="Main" shape="{{shape}}" program="{{program}}" speed="{{speed}}" glow="{{glow}}" hint-size="800px,1000px"></dc-import>
+<dc-import name="Main" shape="{{shape}}" palette="{{palette}}" program="{{program}}" bpm="{{bpm}}" speed="{{speed}}" glow="{{glow}}" hint-size="800px,1000px"></dc-import>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"shape":{"editor":"enum","options":["frame","aperture","canister"],"default":"canister"},"program":{"editor":"enum","options":["loop","wordmark","countdown","roll3d","tunnel","iris","filmstrip","e3d","lightleak","korean","clock","strobe"],"default":"loop"},"speed":{"editor":"range","min":0.25,"max":2,"step":0.05,"default":1},"glow":{"editor":"boolean","default":true},"$preview":{"width":800,"height":1000}}'>
+<script type="text/x-dc" data-dc-script data-props='{"shape":{"editor":"enum","options":["frame","aperture","canister"],"default":"canister"},"palette":{"editor":"enum","options":["rave","brand"],"default":"rave"},"program":{"editor":"enum","options":["loop","wordmark","countdown","tunnel","roll3d","equalizer","iris","kaleido","filmstrip","e3d","lightleak","burst","korean","clock","strobe"],"default":"loop"},"bpm":{"editor":"int","min":90,"max":160,"default":128},"speed":{"editor":"range","min":0.25,"max":2,"step":0.05,"default":1},"glow":{"editor":"boolean","default":true},"$preview":{"width":800,"height":1000}}'>
 class Component extends DCLogic {
   renderVals() {
     return {
       shape: this.props.shape ?? 'canister',
+      palette: this.props.palette ?? 'rave',
       program: this.props.program ?? 'loop',
+      bpm: this.props.bpm ?? 128,
       speed: this.props.speed ?? 1,
       glow: this.props.glow ?? true
     };
