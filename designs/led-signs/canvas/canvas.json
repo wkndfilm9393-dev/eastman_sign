@@ -1,0 +1,17 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-09-27T05:10:00Z" },
+  "title": "Eastman Sign Concepts",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 800, "h": 1000, "title": "LED A · 35mm Frame" },
+    "Aperture.dc.html": { "x": 880, "y": 0, "w": 800, "h": 1000, "title": "LED B · Aperture" },
+    "Canister.dc.html": { "x": 1760, "y": 0, "w": 800, "h": 1000, "title": "LED C · Film Canister" }
+  },
+  "order": ["Main.dc.html", "Aperture.dc.html", "Canister.dc.html"],
+  "notes": {
+    "ledTitle": { "x": 0, "y": -300, "text": "LED blade signs — the pharmacy-cross rave, film lab edition", "kind": "title1", "maxW": 2560 }
+  },
+  "designSystems": []
+}

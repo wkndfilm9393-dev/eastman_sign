@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>LED sign — aperture</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@700;900&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#000000}
+</style>
+</helmet>
+<div style="width: 800px; height: 1000px; background: #000000">
+<dc-import name="Main" shape="{{shape}}" program="{{program}}" speed="{{speed}}" glow="{{glow}}" hint-size="800px,1000px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"shape":{"editor":"enum","options":["frame","aperture","canister"],"default":"aperture"},"program":{"editor":"enum","options":["loop","wordmark","countdown","roll3d","tunnel","iris","filmstrip","e3d","lightleak","korean","clock","strobe"],"default":"loop"},"speed":{"editor":"range","min":0.25,"max":2,"step":0.05,"default":1},"glow":{"editor":"boolean","default":true},"$preview":{"width":800,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      shape: this.props.shape ?? 'aperture',
+      program: this.props.program ?? 'loop',
+      speed: this.props.speed ?? 1,
+      glow: this.props.glow ?? true
+    };
+  }
+}
+</script>
+</body>
+</html>
