@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eastman Film Lab · 컨택트시트 + 갤러리영상 (OCR-A)</title>
+<style>
+  :root{
+    --bg:#0c0b0a; --panel:#141311; --line:#26241f; --ink:#d6d0c6;
+    --dim:#78746c; --amber:#f6853d; --amber-dim:#9c5427; --white:#f2f0ec;
+    --ok:#7fb069; --err:#d4574e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:14px/1.55 "SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",
+      "Helvetica Neue",Arial,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    display:flex; justify-content:center; padding:34px 20px 60px;
+  }
+  .wrap{width:100%; max-width:720px}
+
+  .brand b{font-family:Helvetica,"Helvetica Neue",Arial,sans-serif;
+    font-size:26px; font-weight:700; letter-spacing:-.03em; color:var(--white)}
+  .tag{color:var(--amber); font-weight:700; font-size:12.5px;
+    letter-spacing:-.01em; margin-bottom:26px}
+
+  .tabs{display:flex; gap:8px; margin-bottom:14px}
+  .tabs button{flex:1; font:inherit; font-weight:700; letter-spacing:-.01em;
+    padding:13px 10px; border-radius:10px; cursor:pointer; transition:.14s;
+    background:var(--panel); color:var(--dim); border:1px solid var(--line)}
+  .tabs button small{display:block; font-weight:500; font-size:11px;
+    letter-spacing:.06em; opacity:.8; margin-top:2px}
+  .tabs button:hover{color:var(--ink)}
+  .tabs button.on{background:rgba(246,133,61,.13); color:var(--white);
+    border-color:var(--amber)}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:20px; margin-bottom:14px}
+  .card h2{margin:0 0 14px; font-size:11px; letter-spacing:.2em; color:var(--dim);
+    text-transform:uppercase; font-weight:600}
+
+  label{display:block; font-size:10.5px; letter-spacing:.15em; color:var(--dim);
+    text-transform:uppercase; margin:0 0 6px}
+  input[type=text],input[type=date],input[type=number],select{
+    width:100%; background:#0e0d0b; border:1px solid var(--line); color:var(--ink);
+    padding:10px 11px; border-radius:8px; font:inherit; font-size:14px}
+  input:focus,select:focus{outline:none; border-color:var(--amber-dim)}
+  input[type=number]{-moz-appearance:textfield}
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+  .row{display:flex; gap:12px; flex-wrap:wrap}
+  .row>*{flex:1; min-width:150px}
+
+  /* sticker stepper */
+  .stepper{display:flex; align-items:stretch; gap:6px}
+  .stepper input{text-align:center; font-variant-numeric:tabular-nums;
+    font-size:19px; font-weight:600; letter-spacing:.06em}
+  .stepper button{width:46px; border:1px solid var(--line); background:#0e0d0b;
+    color:var(--amber); font-size:20px; font-weight:700; border-radius:8px;
+    cursor:pointer; line-height:1; transition:.12s}
+  .stepper button:hover{background:rgba(246,133,61,.12); border-color:var(--amber-dim)}
+  .stepper button:active{transform:translateY(1px)}
+
+  .rollid{margin-top:10px; padding:11px 13px; background:#0e0d0b;
+    border:1px dashed var(--line); border-radius:8px;
+    font-family:"SF Mono",Menlo,Consolas,monospace; font-size:16px;
+    letter-spacing:.06em; color:var(--white)}
+  .rollid span{color:var(--amber)}
+
+  .folder{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .path{flex:1; min-width:200px; font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:12px; color:var(--dim); word-break:break-all}
+  .path.on{color:var(--ok)}
+
+  button.btn{font:inherit; font-weight:600; letter-spacing:.03em; border:none;
+    cursor:pointer; padding:11px 16px; border-radius:8px; transition:.14s}
+  .primary{background:var(--amber); color:#241705}
+  .primary:hover{filter:brightness(1.08)}
+  .primary:disabled{background:#3a352c; color:var(--dim); cursor:not-allowed; filter:none}
+  .ghost{background:transparent; color:var(--dim); border:1px solid var(--line)}
+  .ghost:hover{color:var(--ink); border-color:var(--amber-dim)}
+
+  .drop{border:1.5px dashed var(--line); border-radius:10px; padding:34px 16px;
+    text-align:center; color:var(--dim); cursor:pointer; transition:.15s;
+    font-size:13px}
+  .drop:hover,.drop.hot{border-color:var(--amber); color:var(--ink);
+    background:rgba(246,133,61,.05)}
+  .drop b{display:block; color:var(--white); font-size:15px; margin-bottom:4px}
+  .thumbs{display:flex; gap:5px; flex-wrap:wrap; margin-top:12px}
+  .thumbs img{width:52px; height:35px; object-fit:cover; border-radius:3px;
+    border:1px solid var(--line)}
+  .thumbs .more{align-self:center; font-size:11px; color:var(--dim)}
+
+  #go{width:100%; padding:16px; font-size:15px; letter-spacing:.02em}
+
+  .bar{margin-top:14px; height:5px; background:#241f1a; border-radius:3px;
+    overflow:hidden; display:none}
+  .bar.on{display:block}
+  .bar i{display:block; height:100%; width:0; background:var(--amber);
+    transition:width .2s}
+  .log{margin-top:12px; font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:12px; line-height:1.85; color:var(--dim); white-space:pre-wrap}
+  .log .ok{color:var(--ok)} .log .er{color:var(--err)} .log .hi{color:var(--amber)}
+
+  .out{display:none; gap:14px; margin-top:4px}
+  .out.on{display:flex; flex-wrap:wrap}
+  .out figure{margin:0; flex:1; min-width:190px}
+  .out figcaption{font-size:11px; color:var(--dim); letter-spacing:.1em;
+    text-transform:uppercase; margin-bottom:7px}
+  .out img,.out video{width:100%; border-radius:6px; background:#000;
+    border:1px solid var(--line)}
+
+  details{margin-top:4px}
+  summary{cursor:pointer; font-size:11px; letter-spacing:.18em; color:var(--dim);
+    text-transform:uppercase; list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary:before{content:"▸ "; color:var(--amber)}
+  details[open] summary:before{content:"▾ "}
+  .adv{margin-top:14px}
+  .note{font-size:11.5px; color:var(--dim); line-height:1.8; margin-top:10px}
+  .warn{color:var(--amber)}
+  canvas{display:none}
+</style>
+<style>
+  /* OCR-A (Tsukurimashou build by Matthew Skala, free for commercial
+     use; his contributions public domain). Embedded so the app stays a
+     single offline file. */
+  @font-face{font-family:'OCR-A EFL';font-style:normal;font-weight:400;
+    font-display:block;
+    src:url(data:font/ttf;base64,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) format('truetype');}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand"><b>Eastman Film Lab</b></div>
+  <div class="tag">film develop service</div>
+  <div style="color:var(--dim);font-size:11px;letter-spacing:.18em;margin:-22px 0 22px">BRAND #F6853D · OCR-A EDGE PRINT</div>
+
+  <!-- ── film format tabs ──────────────────────────────────── -->
+  <div class="tabs">
+    <button type="button" id="tab135" class="on" data-film="135">
+      35mm<small>135 · 3:2 · 퍼포레이션 있음</small></button>
+    <button type="button" id="tab120" data-film="120">
+      중형<small>120 · 6×6 / 6×4.5 / 6×7 / 6×9</small></button>
+  </div>
+
+  <!-- ── 1. roll ───────────────────────────────────────────── -->
+  <div class="card">
+    <h2>1 · 롤 정보</h2>
+    <div class="row">
+      <div style="flex:1.1">
+        <label>날짜</label>
+        <input type="date" id="date">
+      </div>
+      <div style="flex:1">
+        <label>트윈체크 번호</label>
+        <div class="stepper">
+          <button type="button" id="minus" title="-1">−</button>
+          <input type="number" id="sticker" min="0" step="1" value="1">
+          <button type="button" id="plus" title="+1">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="row" id="mfRow" style="display:none; margin-top:12px">
+      <div>
+        <label>중형 판형</label>
+        <select id="mfSize">
+          <option value="6x6" selected>6×6 · 정사각</option>
+          <option value="6x45">6×4.5</option>
+          <option value="6x7">6×7</option>
+          <option value="6x9">6×9</option>
+        </select>
+      </div>
+    </div>
+    <div class="rollid">Roll ID &nbsp; <span id="rollid">EL-00000000-0001</span></div>
+  </div>
+
+  <!-- ── 2. save folder ────────────────────────────────────── -->
+  <div class="card">
+    <h2>2 · 저장 폴더</h2>
+    <div class="folder">
+      <button class="btn ghost" id="pick">저장할 폴더 선택</button>
+      <div class="path" id="pathEcho">아직 지정 안 됨 — 결과물이 다운로드 폴더로 저장됩니다</div>
+    </div>
+    <div class="note">
+      선택한 <span class="warn">그 폴더에 그대로</span> 저장됩니다.
+      하위 폴더를 자동으로 만들지 않으니, 날짜 폴더 안에 넣으려면 그 날짜 폴더를 직접 고르세요.
+      마지막에 고른 폴더는 기억해 두었다가 다음에 다시 씁니다.
+    </div>
+  </div>
+
+  <!-- ── 3. photos ─────────────────────────────────────────── -->
+  <div class="card">
+    <h2>3 · 스캔 사진</h2>
+    <div class="drop" id="drop">
+      <b>사진을 여기로 끌어다 놓기</b>
+      클릭해서 선택 · 파일명 순서대로 정렬됩니다
+    </div>
+    <input type="file" id="file" accept="image/*" multiple hidden>
+    <div class="thumbs" id="thumbs"></div>
+  </div>
+
+  <!-- ── 4. run ────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>4 · 생성</h2>
+    <button class="btn primary" id="go" disabled>컨택트시트 + 갤러리영상 만들기</button>
+    <div class="bar" id="bar"><i id="barFill"></i></div>
+    <div class="log" id="log"></div>
+    <div class="out" id="out">
+      <figure><figcaption>컨택트시트 · 8×10in</figcaption><img id="outImg" alt=""></figure>
+      <figure><figcaption>갤러리영상 · 9:16</figcaption><video id="outVid" controls playsinline muted></video></figure>
+    </div>
+
+    <details class="adv">
+      <summary>고급 설정 (평소엔 건드릴 필요 없음)</summary>
+      <div class="row" style="margin-top:12px">
+        <div>
+          <label>컨택트시트 규격</label>
+          <select id="csFormat">
+            <option value="8x10" selected>8×10 in · 인쇄</option>
+            <option value="1:1">1:1</option><option value="4:5">4:5</option>
+            <option value="9:16">9:16</option>
+          </select>
+        </div>
+        <div>
+          <label>컬럼</label>
+          <select id="cols"><option>3</option><option>4</option><option>5</option>
+            <option selected>6</option><option>7</option></select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div>
+          <label>영상 규격</label>
+          <select id="vFormat">
+            <option value="9:16" selected>9:16 · 릴스</option>
+            <option value="4:5">4:5</option><option value="1:1">1:1</option>
+          </select>
+        </div>
+        <div>
+          <label>영상 해상도</label>
+          <select id="vres">
+            <option value="2160" selected>2160 · 4K (기본)</option>
+            <option value="1440">1440</option>
+            <option value="1080">1080</option>
+          </select>
+        </div>
+        <div>
+          <label>프레임당 초</label>
+          <input type="number" id="hold" value="0.2" step="0.05" min="0.05" max="2">
+        </div>
+        <div>
+          <label>영상 화질</label>
+          <select id="quality">
+            <option value="0.45" selected>High</option>
+            <option value="0.25">Standard</option>
+            <option value="0.9">Max</option>
+          </select>
+        </div>
+      </div>
+      <div class="note">
+        저장 후 원본 사진은 브라우저 메모리에서 즉시 삭제됩니다.
+        사진은 어디에도 업로드되지 않고 이 PC 안에서만 처리됩니다.
+      </div>
+    </details>
+  </div>
+</div>
+
+<canvas id="cv"></canvas>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   Eastman Film Lab — 컨택트시트 + 갤러리영상 웹앱
+   전부 로컬 처리. 사진은 업로드되지 않고, 저장 직후 메모리에서 삭제.
+   ═══════════════════════════════════════════════════════════════ */
+
+const $=id=>document.getElementById(id);
+
+// ---- brand / layout spec (contact sheet and video share this) ----
+const BRAND='#f6853d', ACCENT_DIM='#8f4d23';
+const THEME={sheet:'#11100f', film:'#080809', perf:'#1a1917',
+             text:'#d6d0c6', dim:'#78746c', white:'#f2f0ec'};
+const WM_TRACK=-0.05;
+
+// contact sheet
+const FRAME_W=560,
+      FRAME_GAP=.045, STRIP_GAP=.42, SHEET_PAD=.9, HEADER_H=.92;
+const PPI=300, PAPER_LONG=10, PAPER_SHORT=8, PAPER_MARGIN=.25;
+const IG_LONG=2048, OUT_FORMATS={'1:1':1,'4:5':4/5,'9:16':9/16,'16:9':16/9};
+
+// video
+const VID_FORMATS={'9:16':9/16,'4:5':4/5,'1:1':1};
+const FPS=30;
+
+// ── film formats ──────────────────────────────────────────────
+// 135 has sprocket perforations; 120 (medium format) has none — it runs on
+// paper backing — so its strip is just film base + rebate. Scans always come
+// out landscape, so every aspect here is width/height.
+const MF_SIZES={
+  '6x6' :{aspect:1,     label:'6×6',   cols:4},
+  '6x45':{aspect:4/3,   label:'6×4.5', cols:4},
+  '6x7' :{aspect:7/6,   label:'6×7',   cols:4},
+  '6x9' :{aspect:3/2,   label:'6×9',   cols:3},
+};
+let filmType='135';
+
+function filmSpec(){
+  if(filmType==='120'){
+    const mf=MF_SIZES[$('mfSize').value]||MF_SIZES['6x6'];
+    // no perforations, and a taller rebate so the edge print still has room
+    return {aspect:mf.aspect, perf:false, perfBand:0, rebate:.155,
+            cols:mf.cols, label:`120 ${mf.label}`};
+  }
+  return {aspect:3/2, perf:true, perfBand:.135, rebate:.115,
+          cols:6, label:'135'};
+}
+// export width in px. 2160 (4K) is the default; the encoder negotiation below
+// steps down through these if the machine can't take the bigger one.
+const VID_WIDTHS=[2160,1440,1080];
+
+let frames=[];                       // {img,url,name} — dropped, then forgotten
+let rootDir=null;                    // FileSystemDirectoryHandle for D:\필름저장
+
+/* ─────────────────────────── roll id / date ─────────────────── */
+const pad4=n=>String(n).length>=4?String(n):String(n).padStart(4,'0');
+const ymd=v=>v.replace(/-/g,'');
+
+function todayISO(){
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+// twin-check sticker number — this alone names the saved files (no date)
+const stickerNo=()=>pad4(+$('sticker').value||0);
+// the roll id still carries the date, but only for the printed header/edge
+function rollId(){
+  return `EL-${ymd($('date').value||todayISO())}-${stickerNo()}`;
+}
+// localStorage throws in private mode / when site data is blocked — never let
+// remembering a number take the whole app down.
+const lsGet=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const lsSet=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+
+function syncRoll(){
+  $('rollid').textContent=rollId();
+  lsSet('efl.sticker',$('sticker').value);
+  lsSet('efl.date',$('date').value);
+}
+function bumpSticker(d){
+  $('sticker').value=Math.max(0,(+$('sticker').value||0)+d);
+  syncRoll();
+}
+$('plus').onclick=()=>bumpSticker(1);
+$('minus').onclick=()=>bumpSticker(-1);
+$('sticker').addEventListener('input',syncRoll);
+$('date').addEventListener('change',syncRoll);
+// arrow keys on the number field
+$('sticker').addEventListener('keydown',e=>{
+  if(e.key==='ArrowUp'){e.preventDefault();bumpSticker(1);}
+  if(e.key==='ArrowDown'){e.preventDefault();bumpSticker(-1);}
+});
+
+(function initRoll(){
+  const savedDate=lsGet('efl.date');
+  // remember the date, but a new day always wins
+  $('date').value=(savedDate&&savedDate===todayISO())?savedDate:todayISO();
+  $('sticker').value=lsGet('efl.sticker')||'1';
+  syncRoll();
+})();
+
+/* ───────────────────────── film format tabs ─────────────────── */
+function setFilm(type){
+  filmType=type;
+  for(const b of document.querySelectorAll('.tabs button'))
+    b.classList.toggle('on',b.dataset.film===type);
+  $('mfRow').style.display = type==='120' ? '' : 'none';
+  $('cols').value=filmSpec().cols;          // sensible default per format
+  lsSet('efl.film',type);
+}
+for(const b of document.querySelectorAll('.tabs button'))
+  b.onclick=()=>setFilm(b.dataset.film);
+$('mfSize').addEventListener('change',()=>{ $('cols').value=filmSpec().cols; });
+setFilm(lsGet('efl.film')==='120'?'120':'135');
+
+/* ─────────────────────── save folder (File System Access) ───── */
+const FS_OK='showDirectoryPicker' in window;
+
+// tiny IndexedDB store, just to keep the folder handle between visits
+function idb(mode,fn){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('efl',1);
+    r.onupgradeneeded=()=>r.result.createObjectStore('kv');
+    r.onerror=()=>rej(r.error);
+    r.onsuccess=()=>{
+      const db=r.result, tx=db.transaction('kv',mode), st=tx.objectStore('kv');
+      const q=fn(st);
+      tx.oncomplete=()=>{ db.close(); res(q&&q.result); };
+      tx.onerror=()=>{ db.close(); rej(tx.error); };
+    };
+  });
+}
+const saveHandle=h=>idb('readwrite',st=>st.put(h,'root'));
+const loadHandle=()=>idb('readonly',st=>st.get('root'));
+
+function showPath(name,ok){
+  $('pathEcho').textContent=ok ? `저장 위치 · ${name}\\` : name;
+  $('pathEcho').classList.toggle('on',!!ok);
+}
+
+$('pick').onclick=async ()=>{
+  if(!FS_OK){
+    log('이 브라우저는 폴더 저장을 지원하지 않습니다 — Chrome 또는 Edge를 쓰세요.','er');
+    return;
+  }
+  try{
+    const h=await showDirectoryPicker({mode:'readwrite',id:'efl-film'});
+    rootDir=h; await saveHandle(h);
+    showPath(h.name,true);
+    $('pick').textContent='저장 폴더 변경';
+    log(`저장 폴더 연결: ${h.name}`,'ok');
+  }catch(e){ /* user cancelled */ }
+};
+
+(async function restoreFolder(){
+  if(!FS_OK){
+    $('pathEcho').textContent=
+      '이 브라우저는 폴더 지정 저장을 지원하지 않습니다 (Chrome / Edge 권장)';
+    return;
+  }
+  try{
+    const h=await loadHandle();
+    if(!h) return;
+    const perm=await h.queryPermission({mode:'readwrite'});
+    if(perm==='granted'){
+      rootDir=h; showPath(h.name,true); $('pick').textContent='저장 폴더 변경';
+    }else{
+      $('pathEcho').textContent=`이전 폴더: ${h.name} — 버튼을 눌러 다시 허용하세요`;
+      $('pick').textContent=`${h.name} 다시 연결`;
+      $('pick').onclick=async ()=>{
+        const p=await h.requestPermission({mode:'readwrite'});
+        if(p==='granted'){ rootDir=h; showPath(h.name,true);
+          $('pick').textContent='저장 폴더 변경'; log(`저장 폴더 연결: ${h.name}`,'ok'); }
+      };
+    }
+  }catch(e){ /* nothing stored */ }
+})();
+
+// The folder the user picked IS the destination — no date subfolder is
+// created, nothing is guessed.
+async function saveBlob(blob,filename){
+  if(rootDir){
+    const fh=await rootDir.getFileHandle(filename,{create:true});
+    const w=await fh.createWritable();
+    await w.write(blob); await w.close();
+    return `${rootDir.name}\\${filename}`;
+  }
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  return `다운로드 폴더\\${filename}`;
+}
+
+/* ───────────────────────────── photos ───────────────────────── */
+const naturalKey=s=>s.replace(/\d+/g,m=>m.padStart(8,'0')).toLowerCase();
+$('drop').onclick=()=>$('file').click();
+['dragover','dragenter'].forEach(e=>$('drop').addEventListener(e,ev=>{
+  ev.preventDefault(); $('drop').classList.add('hot');}));
+['dragleave','drop'].forEach(e=>$('drop').addEventListener(e,ev=>{
+  ev.preventDefault(); $('drop').classList.remove('hot');}));
+$('drop').addEventListener('drop',ev=>addFiles(ev.dataTransfer.files));
+$('file').onchange=()=>addFiles($('file').files);
+
+async function addFiles(list){
+  const picks=[...list].filter(f=>f.type.startsWith('image/'));
+  if(!picks.length) return;
+  for(const f of picks){
+    const url=URL.createObjectURL(f);
+    try{
+      const img=await new Promise((res,rej)=>{
+        const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url;});
+      frames.push({img,url,name:f.name});
+    }catch(e){ URL.revokeObjectURL(url); }
+  }
+  frames.sort((a,b)=>naturalKey(a.name)<naturalKey(b.name)?-1:1);
+  paintThumbs();
+}
+
+function paintThumbs(){
+  const t=$('thumbs'); t.innerHTML='';
+  frames.slice(0,14).forEach(f=>{
+    const i=document.createElement('img'); i.src=f.url; t.appendChild(i);
+  });
+  if(frames.length>14){
+    const s=document.createElement('div'); s.className='more';
+    s.textContent=`+${frames.length-14}`; t.appendChild(s);
+  }
+  $('drop').innerHTML=frames.length
+    ? `<b>${frames.length}컷 준비됨</b>더 추가하려면 계속 끌어다 놓기`
+    : `<b>사진을 여기로 끌어다 놓기</b>클릭해서 선택 · 파일명 순서대로 정렬됩니다`;
+  $('go').disabled=frames.length===0;
+}
+
+function forgetPhotos(){
+  for(const f of frames){ URL.revokeObjectURL(f.url); f.img.src=''; }
+  frames=[];
+  $('file').value='';
+  paintThumbs();
+}
+
+/* ───────────────────────────── log ──────────────────────────── */
+function log(msg,cls){
+  const s=document.createElement('span');
+  if(cls) s.className=cls;
+  s.textContent=msg+'\n';
+  $('log').appendChild(s);
+}
+const clearLog=()=>$('log').textContent='';
+const progress=p=>$('barFill').style.width=`${Math.round(p*100)}%`;
+
+/* ─────────────────────── shared drawing helpers ─────────────── */
+function tracked(ctx,text,x,y,tracking,anchor,maxX){
+  const ws=[...text].map(ch=>ctx.measureText(ch).width);
+  const total=ws.reduce((a,b)=>a+b,0)+tracking*Math.max(0,text.length-1);
+  if(anchor==='center')x-=total/2; else if(anchor==='right')x-=total;
+  for(let i=0;i<text.length;i++){
+    if(maxX!=null && x+ws[i]>maxX) break;
+    ctx.fillText(text[i],x,y); x+=ws[i]+tracking;
+  }
+  return total;
+}
+function coverParams(iw,ih,dw,dh){
+  const s=Math.max(dw/iw,dh/ih), w=iw*s, h=ih*s;
+  return {sx:(w-dw)/2/s, sy:(h-dh)/2/s, sw:dw/s, sh:dh/s};
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  if(ctx.roundRect){ctx.roundRect(x,y,w,h,r); return;}
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function perfsH(ctx,x0,x1,y,bandH,unitW){
+  const pitch=unitW/8, pw=pitch*.52, ph=bandH*.46, r=ph*.28, cy=y+bandH/2;
+  ctx.fillStyle=THEME.perf;
+  let x=x0+pitch*.25;
+  while(x+pw<=x1){ roundRect(ctx,x,cy-ph/2,pw,ph,r); ctx.fill(); x+=pitch; }
+}
+const bitsCache={};
+function bitsFor(seed){
+  if(bitsCache[seed]) return bitsCache[seed];
+  let h=2166136261>>>0, out='';
+  for(let i=0;i<seed.length;i++){ h^=seed.charCodeAt(i); h=Math.imul(h,16777619)>>>0; }
+  for(let i=0;i<32;i++){ h^=h<<13; h^=h>>>17; h^=h<<5; h>>>=0;
+    out+=(h>>>0).toString(2).padStart(32,'0'); }
+  return bitsCache[seed]=out;
+}
+function barcode(ctx,x,y,w,h,bits,color){
+  ctx.fillStyle=color; let col=x,i=0;
+  while(col<x+w && i<bits.length){
+    const bw=(bits[i]==='1'?2:1)*(w/90);
+    if(bits[i]==='1') ctx.fillRect(col,y,bw,h);
+    col+=bw+w/180; i++;
+  }
+}
+const HELV='700 %spx Helvetica,"Helvetica Neue",Arial,sans-serif';
+const MONO='%spx "OCR-A EFL","SF Mono",Menlo,Consolas,monospace';
+// OCR-A is already a wide face — tighten every machine-read line to 50%
+// of the tracking the original build used. 1 = old spacing, 0.5 = half.
+const OCR_TRACK=0.5;
+const f=(tpl,px)=>tpl.replace('%s',px.toFixed(0));
+
+/* ─────────────────────── contact sheet render ───────────────── */
+// width of a tracked string without drawing it
+function measTracked(ctx,text,track){
+  let w=0; for(const ch of text) w+=ctx.measureText(ch).width;
+  return w+track*Math.max(0,text.length-1);
+}
+
+// One continuous ribbon of edge print: [barcode] EASTMAN FILM LAB  ROLL-ID
+// repeated forever, clipped to the strip. `phase` slides the pattern along so
+// consecutive strips (or video frames) read as one long piece of film instead
+// of every row starting identically. Tokens may be cut in half at either end —
+// that is exactly what makes it look continuous.
+function drawEdgePrint(ctx,o){
+  const {x0,x1,top,h,fontPx,track,bcW,bits,text,id,color,phase}=o;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x0,top,x1-x0,h); ctx.clip();
+  ctx.font=f(MONO,fontPx); ctx.fillStyle=color;
+  const prevBase=ctx.textBaseline; ctx.textBaseline='middle';
+  const midY=top+h/2, bcH=h*0.56, bcY=top+(h-bcH)/2;
+  const gap=fontPx*1.9;
+  const wText=measTracked(ctx,text,track), wId=measTracked(ctx,id,track);
+  const unit=bcW+gap+wText+gap+wId+gap;
+  let x=x0-(((phase%unit)+unit)%unit);
+  while(x<x1){
+    barcode(ctx,x,bcY,bcW,bcH,bits,color);
+    let cx=x+bcW+gap;
+    tracked(ctx,text,cx,midY,track,'left'); cx+=wText+gap;
+    tracked(ctx,id,cx,midY,track,'left');
+    x+=unit;
+  }
+  ctx.textBaseline=prevBase;
+  ctx.restore();
+}
+
+function paperSize(fmt,landscape){
+  if(fmt==='8x10'){
+    return {pw:Math.round((landscape?PAPER_LONG:PAPER_SHORT)*PPI),
+            ph:Math.round((landscape?PAPER_SHORT:PAPER_LONG)*PPI),
+            margin:Math.round(PAPER_MARGIN*PPI)};
+  }
+  const r=OUT_FORMATS[fmt];
+  const pw=Math.round(r>=1?IG_LONG:IG_LONG*r), ph=Math.round(r>=1?IG_LONG/r:IG_LONG);
+  return {pw,ph,margin:Math.round(Math.max(pw,ph)*.035)};
+}
+
+async function renderContactSheet(){
+  const cols=+$('cols').value, fmt=$('csFormat').value;
+  const id=rollId(), dateStr=($('date').value||'').replace(/-/g,'.');
+  const edgeText='EASTMAN FILM LAB';
+  const n=frames.length;
+
+  const spec=filmSpec();
+  const stripBits=bitsFor(id);          // one code per roll, repeated down the film
+  const fw=FRAME_W, fh=fw/spec.aspect;
+  const perfH=fh*spec.perfBand, rebH=fh*spec.rebate, fgap=fw*FRAME_GAP,
+        sgap=perfH*STRIP_GAP, pad=fw*SHEET_PAD, headH=fw*HEADER_H;
+  const stripH=perfH*2+rebH*2+fh, strips=Math.ceil(n/cols);
+  const W=pad*2+cols*fw+(cols-1)*fgap;
+  const H=pad+headH+strips*stripH+Math.max(0,strips-1)*sgap+pad;
+
+  const oc=document.createElement('canvas');
+  oc.width=Math.round(W); oc.height=Math.round(H);
+  const ctx=oc.getContext('2d');
+  ctx.textBaseline='top';
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  ctx.fillStyle=THEME.sheet; ctx.fillRect(0,0,W,H);
+
+  const wmSize=fw*.24;
+  ctx.fillStyle=THEME.white; ctx.font=f(HELV,wmSize);
+  tracked(ctx,'Eastman Film Lab',pad,pad,WM_TRACK*wmSize,'left');
+  const tagSize=fw*.098;
+  ctx.fillStyle=BRAND; ctx.font=f(HELV,tagSize);
+  tracked(ctx,'film develop service',pad,pad+wmSize*1.14,WM_TRACK*tagSize,'left');
+
+  ctx.font=f(MONO,fw*.12);
+  const right=W-pad;
+  ctx.fillStyle=THEME.text; tracked(ctx,id,right,pad+fw*.15,OCR_TRACK*fw*.02,'right');
+  ctx.fillStyle=THEME.dim;
+  if(dateStr) tracked(ctx,dateStr,right,pad+fw*.33,OCR_TRACK*fw*.02,'right');
+  ctx.fillStyle=BRAND; tracked(ctx,`${n} FRAMES`,right,pad+fw*.51,OCR_TRACK*fw*.02,'right');
+  ctx.strokeStyle=THEME.dim; ctx.lineWidth=2;
+  const ry=pad+headH-fw*.14;
+  ctx.beginPath(); ctx.moveTo(pad,ry); ctx.lineTo(W-pad,ry); ctx.stroke();
+
+  const top0=pad+headH;
+  for(let s=0;s<strips;s++){
+    const x0=pad, x1=W-pad, sy=top0+s*(stripH+sgap);
+    ctx.fillStyle=THEME.film; ctx.fillRect(x0,sy,x1-x0,stripH);
+    if(spec.perf){                       // 120 has no sprocket holes
+      perfsH(ctx,x0,x1,sy,perfH,fw);
+      perfsH(ctx,x0,x1,sy+stripH-perfH,perfH,fw);
+    }
+
+    const topReb=sy+perfH, imgY=topReb+rebH, botReb=imgY+fh;
+    drawEdgePrint(ctx,{x0:x0+fgap,x1:x1-fgap,top:topReb,h:rebH,
+      fontPx:rebH*.6, track:OCR_TRACK*rebH*.10, bcW:fw*.34,
+      bits:stripBits, text:edgeText, id, color:ACCENT_DIM,
+      phase:s*(x1-x0-2*fgap)});      // carry on where the row above stopped
+
+    ctx.font=f(MONO,rebH*.74);
+    for(let c=0;c<cols;c++){
+      const idx=s*cols+c, fx=x0+c*(fw+fgap);
+      if(idx<n){
+        const im=frames[idx].img;
+        const p=coverParams(im.naturalWidth,im.naturalHeight,fw,fh);
+        ctx.drawImage(im,p.sx,p.sy,p.sw,p.sh,fx,imgY,fw,fh);
+        ctx.strokeStyle='#000'; ctx.lineWidth=2;
+        ctx.strokeRect(fx,imgY,fw,fh);
+        ctx.fillStyle=BRAND;
+        tracked(ctx,String(idx+1),fx+fw/2,botReb+rebH*.24,OCR_TRACK*rebH*.06,'center');
+        ctx.strokeStyle=ACCENT_DIM; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(fx+fw/2,botReb+rebH*.06);
+        ctx.lineTo(fx+fw/2,botReb+rebH*.16); ctx.stroke();
+      }else{
+        ctx.fillStyle='#0e0e0f'; ctx.fillRect(fx,imgY,fw,fh);
+      }
+    }
+    await new Promise(r=>setTimeout(r,0));
+    progress(.05+.35*(s+1)/strips);
+  }
+
+  const {pw,ph,margin}=paperSize(fmt,oc.width>=oc.height);
+  const paper=document.createElement('canvas');
+  paper.width=pw; paper.height=ph;
+  const pctx=paper.getContext('2d');
+  pctx.fillStyle=THEME.sheet; pctx.fillRect(0,0,pw,ph);
+  const s2=Math.min((pw-2*margin)/oc.width,(ph-2*margin)/oc.height);
+  const nw=oc.width*s2, nh=oc.height*s2;
+  pctx.imageSmoothingEnabled=true; pctx.imageSmoothingQuality='high';
+  pctx.drawImage(oc,(pw-nw)/2,(ph-nh)/2,nw,nh);
+
+  const blob=await new Promise(r=>paper.toBlob(r,'image/png'));
+  return {blob,w:pw,h:ph};
+}
+
+/* ───────────────────────── video: one frame ─────────────────── */
+function videoDims(width){
+  const aspect=VID_FORMATS[$('vFormat').value]||VID_FORMATS['9:16'];
+  // even dimensions — H.264 requires it
+  return {W:Math.round(width/2)*2, H:Math.round(width/aspect/2)*2};
+}
+function sizeVideoCanvas(width){
+  const {W,H}=videoDims(width);
+  const cv=$('cv'); cv.width=W; cv.height=H;
+  return cv;
+}
+const bitrateFor=(W,H)=>Math.round(
+  Math.min(160e6,Math.max(12e6,W*H*FPS*(+$('quality').value))));
+function drawVideoFrame(idx){
+  const cv=$('cv'), ctx=cv.getContext('2d');
+  const W=cv.width, H=cv.height, n=frames.length;
+  const id=rollId(), dateStr=($('date').value||'').replace(/-/g,'.');
+  const edgeText='EASTMAN FILM LAB';
+
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.textBaseline='top';
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  ctx.fillStyle=THEME.sheet; ctx.fillRect(0,0,W,H);
+
+  const U=Math.min(W,H*0.75);
+  const pad=U*.075, wmSize=U*.062, tagSize=U*.026;
+  ctx.fillStyle=THEME.white; ctx.font=f(HELV,wmSize);
+  tracked(ctx,'Eastman Film Lab',pad,pad,WM_TRACK*wmSize,'left');
+  ctx.fillStyle=BRAND; ctx.font=f(HELV,tagSize);
+  tracked(ctx,'film develop service',pad,pad+wmSize*1.16,WM_TRACK*tagSize,'left');
+  ctx.font=f(MONO,U*.026);
+  ctx.fillStyle=THEME.text; tracked(ctx,id,W-pad,pad+wmSize*.10,OCR_TRACK*U*.004,'right');
+  if(dateStr){ ctx.fillStyle=THEME.dim;
+    tracked(ctx,dateStr,W-pad,pad+wmSize*.62,OCR_TRACK*U*.004,'right'); }
+
+  const spec=filmSpec();
+  const PERF_R=spec.perfBand, REB_R=spec.rebate, sideGap=U*.014;
+  const headBottom=pad+wmSize*1.16+tagSize*2.6, footerH=U*.135;
+  const availH=(H-pad-footerH)-headBottom;
+  const slotW=Math.min(W-2*pad-2*sideGap,
+                       availH/(1+2*REB_R+2*PERF_R)*spec.aspect);
+  const slotH=slotW/spec.aspect, perfH=slotH*PERF_R, rebH=slotH*REB_R;
+  const stripH=slotH+2*rebH+2*perfH;
+  const x0=pad, x1=W-pad, stripY=headBottom+(availH-stripH)/2;
+
+  ctx.fillStyle=THEME.film; ctx.fillRect(x0,stripY,x1-x0,stripH);
+  if(spec.perf){                         // 120 has no sprocket holes
+    perfsH(ctx,x0,x1,stripY,perfH,slotW);
+    perfsH(ctx,x0,x1,stripY+stripH-perfH,perfH,slotW);
+  }
+
+  const topReb=stripY+perfH, slotX=(W-slotW)/2, slotY=topReb+rebH,
+        botReb=slotY+slotH;
+
+  const im=frames[idx].img;
+  const p=coverParams(im.naturalWidth,im.naturalHeight,slotW,slotH);
+  ctx.drawImage(im,p.sx,p.sy,p.sw,p.sh,slotX,slotY,slotW,slotH);
+  ctx.strokeStyle='#000'; ctx.lineWidth=Math.max(2,U*.002);
+  ctx.strokeRect(slotX,slotY,slotW,slotH);
+
+  drawEdgePrint(ctx,{x0:slotX,x1:slotX+slotW,top:topReb,h:rebH,
+    fontPx:rebH*.42, track:OCR_TRACK*rebH*.10, bcW:slotW*.16,
+    bits:bitsFor(id), text:edgeText, id, color:ACCENT_DIM,
+    phase:idx*slotW*0.62});          // ribbon advances with each frame
+
+  ctx.font=f(MONO,rebH*.56); ctx.fillStyle=BRAND;
+  tracked(ctx,String(idx+1),slotX+slotW/2,botReb+rebH*.26,OCR_TRACK*rebH*.06,'center');
+  ctx.strokeStyle=ACCENT_DIM; ctx.lineWidth=Math.max(2,U*.0016);
+  ctx.beginPath(); ctx.moveTo(slotX+slotW/2,botReb+rebH*.06);
+  ctx.lineTo(slotX+slotW/2,botReb+rebH*.15); ctx.stroke();
+
+  const fy=stripY+stripH+(H-pad-(stripY+stripH))*.42, tickW=(W-2*pad)/n;
+  for(let i=0;i<n;i++){
+    ctx.fillStyle = i===idx ? BRAND : '#2a2723';
+    ctx.fillRect(pad+i*tickW,fy,Math.max(1,tickW*.62),Math.max(2,U*.0035));
+  }
+  ctx.font=f(MONO,U*.028); ctx.fillStyle=THEME.dim;
+  tracked(ctx,`${String(idx+1).padStart(2,'0')} / ${String(n).padStart(2,'0')}`,
+          pad,fy+U*.022,OCR_TRACK*U*.004,'left');
+  ctx.fillStyle=BRAND;
+  tracked(ctx,`${n} FRAMES`,W-pad,fy+U*.022,OCR_TRACK*U*.004,'right');
+}
+
+/* ───────────────── minimal MP4 muxer (no dependencies) ──────── */
+const _str=s=>new TextEncoder().encode(s);
+function _u16(n){const a=new Uint8Array(2);new DataView(a.buffer).setUint16(0,n);return a;}
+function _u32(n){const a=new Uint8Array(4);new DataView(a.buffer).setUint32(0,n>>>0);return a;}
+function _cat(parts){
+  let len=0; for(const p of parts) len+=p.byteLength;
+  const out=new Uint8Array(len); let o=0;
+  for(const p of parts){ out.set(p,o); o+=p.byteLength; }
+  return out;
+}
+const _box=(type,...parts)=>{const b=_cat(parts);
+  return _cat([_u32(b.byteLength+8),_str(type),b]);};
+const _fbox=(type,v,fl,...parts)=>_box(type,
+  new Uint8Array([v,(fl>>16)&255,(fl>>8)&255,fl&255]),...parts);
+const _MATRIX=_cat([_u32(0x00010000),_u32(0),_u32(0),_u32(0),_u32(0x00010000),
+                    _u32(0),_u32(0),_u32(0),_u32(0x40000000)]);
+
+function buildMP4({width,height,timescale,samples,avcC,payload}){
+  const total=samples.reduce((a,s)=>a+s.duration,0);
+  const runs=[];
+  for(const s of samples){
+    const last=runs[runs.length-1];
+    if(last&&last.d===s.duration) last.c++; else runs.push({c:1,d:s.duration});
+  }
+  const sttsBody=[]; runs.forEach(r=>sttsBody.push(_u32(r.c),_u32(r.d)));
+  const stts=_fbox('stts',0,0,_u32(runs.length),...sttsBody);
+  const syncs=[]; samples.forEach((s,i)=>{ if(s.key) syncs.push(i+1); });
+  const stss=_fbox('stss',0,0,_u32(syncs.length),...syncs.map(_u32));
+  const stsc=_fbox('stsc',0,0,_u32(1),_u32(1),_u32(samples.length),_u32(1));
+  const stsz=_fbox('stsz',0,0,_u32(0),_u32(samples.length),
+                   ...samples.map(s=>_u32(s.size)));
+  const avc1=_box('avc1',new Uint8Array(6),_u16(1),_u16(0),_u16(0),
+    new Uint8Array(12),_u16(width),_u16(height),
+    _u32(0x00480000),_u32(0x00480000),_u32(0),_u16(1),new Uint8Array(32),
+    _u16(0x0018),_u16(0xFFFF),_box('avcC',avcC));
+  const stsd=_fbox('stsd',0,0,_u32(1),avc1);
+
+  const moov=off=>{
+    const stbl=_box('stbl',stsd,stts,stss,stsc,stsz,
+                    _fbox('stco',0,0,_u32(1),_u32(off)));
+    const minf=_box('minf',_fbox('vmhd',0,1,_u16(0),_u16(0),_u16(0),_u16(0)),
+      _box('dinf',_fbox('dref',0,0,_u32(1),_fbox('url ',0,1))),stbl);
+    const mdia=_box('mdia',
+      _fbox('mdhd',0,0,_u32(0),_u32(0),_u32(timescale),_u32(total),
+            _u16(0x55C4),_u16(0)),
+      _fbox('hdlr',0,0,_u32(0),_str('vide'),new Uint8Array(12),
+            _str('VideoHandler\0')),minf);
+    const tkhd=_fbox('tkhd',0,3,_u32(0),_u32(0),_u32(1),_u32(0),_u32(total),
+      new Uint8Array(8),_u16(0),_u16(0),_u16(0),_u16(0),_MATRIX,
+      _u32(width<<16),_u32(height<<16));
+    return _box('moov',
+      _fbox('mvhd',0,0,_u32(0),_u32(0),_u32(timescale),_u32(total),
+            _u32(0x00010000),_u16(0x0100),_u16(0),new Uint8Array(8),
+            _MATRIX,new Uint8Array(24),_u32(2)),
+      _box('trak',tkhd,mdia));
+  };
+  const ftyp=_box('ftyp',_str('isom'),_u32(0x200),
+                  _str('isom'),_str('iso2'),_str('avc1'),_str('mp41'));
+  const mdatHdr=_cat([_u32(payload.byteLength+8),_str('mdat')]);
+  return new Blob([ftyp,mdatHdr,payload,moov(ftyp.byteLength+mdatHdr.byteLength)],
+                  {type:'video/mp4'});
+}
+
+/* ───────────────────────── video encode ─────────────────────── */
+async function pickAvcCodec(w,h,bitrate){
+  if(!('VideoEncoder' in window)) return null;
+  for(const codec of ['avc1.640033','avc1.640029','avc1.640028','avc1.4d0029']){
+    try{
+      const s=await VideoEncoder.isConfigSupported(
+        {codec,width:w,height:h,bitrate,framerate:FPS});
+      if(s.supported) return codec;
+    }catch(e){}
+  }
+  return null;
+}
+
+// Pick the largest width this machine will actually encode. 4K needs H.264
+// level 5.1+, and some hardware encoders top out lower, so step down instead
+// of failing outright.
+async function negotiateVideo(){
+  const want=+$('vres').value||VID_WIDTHS[0];
+  const tries=VID_WIDTHS.filter(w=>w<=want);
+  if(!tries.length) tries.push(want);
+  for(const width of tries){
+    const {W,H}=videoDims(width);
+    const bitrate=bitrateFor(W,H);
+    const codec=await pickAvcCodec(W,H,bitrate);
+    if(codec) return {width,W,H,bitrate,codec,downgraded:width!==want};
+  }
+  return null;
+}
+
+async function renderVideo(onNote){
+  if(!('VideoEncoder' in window))
+    throw new Error('이 브라우저는 영상 인코딩(WebCodecs)을 지원하지 않습니다 — Chrome/Edge를 쓰세요');
+  const pick=await negotiateVideo();
+  if(!pick) throw new Error('이 기기에서 지원하는 영상 해상도를 찾지 못했습니다');
+  const {W,H,bitrate,codec}=pick;
+  if(pick.downgraded && onNote)
+    onNote(`이 기기가 ${$('vres').value}px를 지원하지 않아 ${pick.width}px로 낮췄습니다.`);
+  const cv=sizeVideoCanvas(pick.width);
+
+  const hold=Math.max(.05,+$('hold').value||0.2);
+  const per=Math.max(1,Math.round(hold*FPS)), dur=Math.round(90000/FPS);
+  const chunks=[], samples=[];
+  let avcC=null, failed=null;
+
+  const enc=new VideoEncoder({
+    output:(chunk,meta)=>{
+      if(meta&&meta.decoderConfig&&meta.decoderConfig.description&&!avcC)
+        avcC=new Uint8Array(meta.decoderConfig.description);
+      const buf=new Uint8Array(chunk.byteLength); chunk.copyTo(buf);
+      chunks.push(buf);
+      samples.push({size:buf.byteLength,duration:dur,key:chunk.type==='key'});
+    },
+    error:e=>{ failed=e; }
+  });
+  enc.configure({codec,width:W,height:H,bitrate,framerate:FPS,
+                 latencyMode:'quality',avc:{format:'avc'}});
+
+  let t=0;
+  for(let i=0;i<frames.length && !failed;i++){
+    drawVideoFrame(i);
+    for(let k=0;k<per;k++){
+      const vf=new VideoFrame(cv,{timestamp:Math.round(t*1e6/FPS),
+                                  duration:Math.round(1e6/FPS)});
+      enc.encode(vf,{keyFrame:k===0}); vf.close(); t++;
+      if(enc.encodeQueueSize>8) await new Promise(r=>setTimeout(r,0));
+    }
+    progress(.45+.45*(i+1)/frames.length);
+    await new Promise(r=>setTimeout(r,0));
+  }
+  await enc.flush(); enc.close();
+  if(failed) throw failed;
+  if(!avcC||!samples.length) throw new Error('인코딩 결과가 비어 있습니다');
+
+  return {blob:buildMP4({width:W,height:H,timescale:90000,samples,avcC,
+                         payload:_cat(chunks)}), w:W, h:H};
+}
+
+/* ───────────────────────────── run ──────────────────────────── */
+$('go').onclick=async ()=>{
+  if(!frames.length) return;
+  const id=rollId(), count=frames.length;
+  $('go').disabled=true; $('bar').classList.add('on'); progress(.02);
+  $('out').classList.remove('on');
+  clearLog();
+  log(`${id} · ${count}컷`,'hi');
+  if(!rootDir) log('저장 폴더가 연결되지 않아 다운로드 폴더로 저장됩니다.','er');
+
+  try{
+    // the embedded OCR-A must be ready before the first canvas draw
+    try{ await document.fonts.load('40px "OCR-A EFL"'); await document.fonts.ready; }
+    catch(e){}
+    log('컨택트시트 만드는 중…');
+    const cs=await renderContactSheet();
+    progress(.42);
+    const csPath=await saveBlob(cs.blob,`${stickerNo()}-contact.png`);
+    log(`  ✓ ${csPath}   (${cs.w}×${cs.h}, ${(cs.blob.size/1e6).toFixed(1)}MB)`,'ok');
+    $('outImg').src=URL.createObjectURL(cs.blob);
+
+    const {W:vw,H:vh}=videoDims(+$('vres').value);
+    log(`갤러리영상 만드는 중… ${vw}×${vh} (해상도가 높아 시간이 걸립니다)`);
+    const vd=await renderVideo(note=>log('  '+note,'er'));
+    progress(.94);
+    const vdPath=await saveBlob(vd.blob,`${stickerNo()}-video.mp4`);
+    log(`  ✓ ${vdPath}   (${vd.w}×${vd.h}, ${(vd.blob.size/1e6).toFixed(1)}MB)`,'ok');
+    $('outVid').src=URL.createObjectURL(vd.blob);
+    $('out').classList.add('on');
+
+    progress(1);
+    forgetPhotos();
+    log(`원본 사진 ${count}컷을 메모리에서 삭제했습니다.`,'hi');
+    bumpSticker(1);
+    log(`다음 롤 준비됨 → ${rollId()}`,'hi');
+  }catch(e){
+    log('실패: '+(e&&e.message?e.message:e),'er');
+    $('go').disabled=frames.length===0;
+  }finally{
+    setTimeout(()=>{ $('bar').classList.remove('on'); progress(0); },1200);
+    const cv=$('cv'); cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
+  }
+};
+</script>
+</body>
+</html>
