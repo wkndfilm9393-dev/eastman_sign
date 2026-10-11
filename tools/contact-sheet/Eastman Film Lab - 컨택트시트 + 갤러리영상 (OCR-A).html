@@ -111,8 +111,6 @@
     text-transform:uppercase; margin-bottom:7px}
   .out img,.out video{width:100%; border-radius:6px; background:#000;
     border:1px solid var(--line)}
-  .out .save{width:100%; margin-top:8px}
-  .out .save.done{background:transparent; color:var(--ok); border:1px solid var(--ok)}
 
   details{margin-top:4px}
   summary{cursor:pointer; font-size:11px; letter-spacing:.18em; color:var(--dim);
@@ -182,12 +180,16 @@
 
   <!-- ── 2. save folder ────────────────────────────────────── -->
   <div class="card">
-    <h2>2 · 저장 위치</h2>
-    <div class="path" id="pathEcho">파일마다 직접 선택</div>
+    <h2>2 · 저장 폴더</h2>
+    <div class="folder">
+      <button class="btn ghost" id="pick">저장할 폴더 선택</button>
+      <div class="path" id="pathEcho">아직 지정 안 됨 — 오늘 저장할 폴더를 먼저 선택하세요</div>
+    </div>
     <div class="note">
-      결과물은 <span class="warn">자동으로 저장되지 않습니다.</span>
-      만들기가 끝나면 아래 결과마다 <b>저장…</b> 버튼이 생깁니다.
-      누를 때마다 저장 창이 열리니, 저장할 폴더와 파일 이름을 그때 직접 고르세요.
+      이 탭을 새로 열 때마다 <span class="warn">저장 폴더를 다시 선택</span>해야 합니다.
+      폴더를 고르기 전에는 생성 버튼이 잠겨 있습니다.
+      선택한 <span class="warn">그 폴더에 그대로</span> 저장됩니다.
+      하위 폴더를 자동으로 만들지 않으니, 날짜 폴더 안에 넣으려면 그 날짜 폴더를 직접 고르세요.
     </div>
   </div>
 
@@ -209,10 +211,8 @@
     <div class="bar" id="bar"><i id="barFill"></i></div>
     <div class="log" id="log"></div>
     <div class="out" id="out">
-      <figure><figcaption>컨택트시트 · 8×10in</figcaption><img id="outImg" alt="">
-        <button class="btn primary save" id="saveImg">컨택트시트 저장…</button></figure>
-      <figure><figcaption>갤러리영상 · 9:16</figcaption><video id="outVid" controls playsinline muted></video>
-        <button class="btn primary save" id="saveVid">갤러리영상 저장…</button></figure>
+      <figure><figcaption>컨택트시트 · 8×10in</figcaption><img id="outImg" alt=""></figure>
+      <figure><figcaption>갤러리영상 · 9:16</figcaption><video id="outVid" controls playsinline muted></video></figure>
     </div>
 
     <details class="adv">
@@ -262,7 +262,7 @@
         </div>
       </div>
       <div class="note">
-        생성이 끝나면 원본 사진은 브라우저 메모리에서 즉시 삭제됩니다.
+        저장 후 원본 사진은 브라우저 메모리에서 즉시 삭제됩니다.
         사진은 어디에도 업로드되지 않고 이 PC 안에서만 처리됩니다.
       </div>
     </details>
@@ -322,6 +322,7 @@ function filmSpec(){
 const VID_WIDTHS=[2160,1440,1080];
 
 let frames=[];                       // {img,url,name} — dropped, then forgotten
+let rootDir=null;                    // FileSystemDirectoryHandle for D:\필름저장
 
 /* ─────────────────────────── roll id / date ─────────────────── */
 const pad4=n=>String(n).length>=4?String(n):String(n).padStart(4,'0');
@@ -383,73 +384,58 @@ for(const b of document.querySelectorAll('.tabs button'))
 $('mfSize').addEventListener('change',()=>{ $('cols').value=filmSpec().cols; });
 setFilm(lsGet('efl.film')==='120'?'120':'135');
 
-/* ───────────────────── save (user picks every time) ─────────── */
-// Nothing is saved automatically and no folder is remembered by this app:
-// each result has its own 저장… button, and every click opens a Save dialog
-// where the user picks the folder and file name. The dialog needs a fresh
-// click, which is why it can't simply pop up once a long render finishes.
-const PICKER_OK='showSaveFilePicker' in window;
-if(!PICKER_OK)
-  $('pathEcho').textContent=
-    '이 브라우저는 저장 창을 지원하지 않습니다 — Chrome/Edge를 쓰거나, '+
-    '브라우저 설정에서 "다운로드 전에 저장 위치 확인"을 켜세요';
+/* ─────────────────────── save folder (File System Access) ───── */
+const FS_OK='showDirectoryPicker' in window;
 
-const SAVE_TYPES={
-  png:{description:'PNG 이미지',accept:{'image/png':['.png']}},
-  mp4:{description:'MP4 영상', accept:{'video/mp4':['.mp4']}},
+// generating is locked until a folder is chosen (where folder saving works)
+function syncGo(){
+  const needFolder=FS_OK&&!rootDir;
+  $('go').disabled=frames.length===0||needFolder;
+  $('go').textContent=needFolder?'먼저 저장 폴더를 선택하세요':'컨택트시트 + 갤러리영상 만들기';
+}
+
+// The folder is chosen fresh every time the tab opens — nothing is stored
+// between visits, so whoever runs the lab that day sets it themselves.
+function showPath(name,ok){
+  $('pathEcho').textContent=ok ? `저장 위치 · ${name}\\` : name;
+  $('pathEcho').classList.toggle('on',!!ok);
+}
+
+$('pick').onclick=async ()=>{
+  if(!FS_OK){
+    log('이 브라우저는 폴더 저장을 지원하지 않습니다 — Chrome 또는 Edge를 쓰세요.','er');
+    return;
+  }
+  try{
+    const h=await showDirectoryPicker({mode:'readwrite',id:'efl-film'});
+    rootDir=h; syncGo();
+    showPath(h.name,true);
+    $('pick').textContent='저장 폴더 변경';
+    log(`저장 폴더 연결: ${h.name}`,'ok');
+  }catch(e){ /* user cancelled */ }
 };
 
-// resolves to the saved file's name, or null if the user cancelled
+if(!FS_OK)
+  $('pathEcho').textContent=
+    '이 브라우저는 폴더 지정 저장을 지원하지 않습니다 (Chrome / Edge 권장) — 다운로드 폴더로 저장됩니다';
+syncGo();
+// older versions kept the folder in IndexedDB — clear it so nothing lingers
+try{ indexedDB.deleteDatabase('efl'); }catch(e){}
+
+// The folder the user picked IS the destination — no date subfolder is
+// created, nothing is guessed.
 async function saveBlob(blob,filename){
-  if(PICKER_OK){
-    const ext=filename.split('.').pop().toLowerCase();
-    let h;
-    try{
-      h=await showSaveFilePicker({suggestedName:filename,
-        types:SAVE_TYPES[ext]?[SAVE_TYPES[ext]]:undefined});
-    }catch(e){
-      if(e&&e.name==='AbortError') return null;
-      throw e;
-    }
-    const w=await h.createWritable();
+  if(rootDir){
+    const fh=await rootDir.getFileHandle(filename,{create:true});
+    const w=await fh.createWritable();
     await w.write(blob); await w.close();
-    return h.name;
+    return `${rootDir.name}\\${filename}`;
   }
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download=filename; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-  return filename;
+  return `다운로드 폴더\\${filename}`;
 }
-
-// results waiting for the user to save them
-const results={img:null,vid:null};
-function offerSave(key,res,filename){
-  const btn=$(key==='img'?'saveImg':'saveVid');
-  results[key]={...res,filename,saved:false};
-  btn.hidden=false;
-  btn.classList.remove('done');
-  btn.textContent=key==='img'?'컨택트시트 저장…':'갤러리영상 저장…';
-}
-async function onSave(key){
-  const r=results[key]; if(!r) return;
-  const btn=$(key==='img'?'saveImg':'saveVid');
-  try{
-    const name=await saveBlob(r.blob,r.filename);
-    if(!name){ log(`  저장 취소 · ${r.filename} — 다시 누르면 됩니다`,'er'); return; }
-    r.saved=true;
-    btn.classList.add('done');
-    btn.textContent=`✓ 저장됨 · ${name} (다른 곳에도 저장)`;
-    log(`  ✓ 저장됨 · ${name}`,'ok');
-  }catch(e){
-    log('저장 실패: '+(e&&e.message?e.message:e),'er');
-  }
-}
-$('saveImg').onclick=()=>onSave('img');
-$('saveVid').onclick=()=>onSave('vid');
-// don't lose a finished render by closing the tab before saving it
-window.addEventListener('beforeunload',e=>{
-  if(Object.values(results).some(r=>r&&!r.saved)){ e.preventDefault(); e.returnValue=''; }
-});
 
 /* ───────────────────────────── photos ───────────────────────── */
 const naturalKey=s=>s.replace(/\d+/g,m=>m.padStart(8,'0')).toLowerCase();
@@ -488,7 +474,7 @@ function paintThumbs(){
   $('drop').innerHTML=frames.length
     ? `<b>${frames.length}컷 준비됨</b>더 추가하려면 계속 끌어다 놓기`
     : `<b>사진을 여기로 끌어다 놓기</b>클릭해서 선택 · 파일명 순서대로 정렬됩니다`;
-  $('go').disabled=frames.length===0;
+  syncGo();
 }
 
 function forgetPhotos(){
@@ -925,9 +911,7 @@ $('go').onclick=async ()=>{
   $('out').classList.remove('on');
   clearLog();
   log(`${id} · ${count}컷`,'hi');
-  const no=stickerNo();                 // file names are fixed before the bump
-  results.img=results.vid=null;
-  $('saveImg').hidden=$('saveVid').hidden=true;
+  if(!rootDir) log('저장 폴더가 지정되지 않아 다운로드 폴더로 저장됩니다.','er');
 
   try{
     // the embedded OCR-A must be ready before the first canvas draw
@@ -936,16 +920,16 @@ $('go').onclick=async ()=>{
     log('컨택트시트 만드는 중…');
     const cs=await renderContactSheet();
     progress(.42);
-    offerSave('img',cs,`${no}-contact.png`);
-    log(`  ✓ 완성 · ${no}-contact.png   (${cs.w}×${cs.h}, ${(cs.blob.size/1e6).toFixed(1)}MB)`,'ok');
+    const csPath=await saveBlob(cs.blob,`${stickerNo()}-contact.png`);
+    log(`  ✓ ${csPath}   (${cs.w}×${cs.h}, ${(cs.blob.size/1e6).toFixed(1)}MB)`,'ok');
     $('outImg').src=URL.createObjectURL(cs.blob);
 
     const {W:vw,H:vh}=videoDims(+$('vres').value);
     log(`갤러리영상 만드는 중… ${vw}×${vh} (해상도가 높아 시간이 걸립니다)`);
     const vd=await renderVideo(note=>log('  '+note,'er'));
     progress(.94);
-    offerSave('vid',vd,`${no}-video.mp4`);
-    log(`  ✓ 완성 · ${no}-video.mp4   (${vd.w}×${vd.h}, ${(vd.blob.size/1e6).toFixed(1)}MB)`,'ok');
+    const vdPath=await saveBlob(vd.blob,`${stickerNo()}-video.mp4`);
+    log(`  ✓ ${vdPath}   (${vd.w}×${vd.h}, ${(vd.blob.size/1e6).toFixed(1)}MB)`,'ok');
     $('outVid').src=URL.createObjectURL(vd.blob);
     $('out').classList.add('on');
 
@@ -954,12 +938,9 @@ $('go').onclick=async ()=>{
     log(`원본 사진 ${count}컷을 메모리에서 삭제했습니다.`,'hi');
     bumpSticker(1);
     log(`다음 롤 준비됨 → ${rollId()}`,'hi');
-    log('아래 저장… 버튼을 눌러 저장할 위치를 고르세요.','hi');
   }catch(e){
     log('실패: '+(e&&e.message?e.message:e),'er');
-    // a finished contact sheet is still worth saving if the video failed
-    if(results.img){ $('out').classList.add('on'); log('컨택트시트는 완성되었습니다 — 저장… 버튼으로 저장하세요.','hi'); }
-    $('go').disabled=frames.length===0;
+    syncGo();
   }finally{
     setTimeout(()=>{ $('bar').classList.remove('on'); progress(0); },1200);
     const cv=$('cv'); cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
