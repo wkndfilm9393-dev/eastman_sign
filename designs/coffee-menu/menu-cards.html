@@ -73,10 +73,14 @@
   .meter { display: flex; gap: 2px; }
   .meter i { width: 16px; height: 16px; border: 2px solid var(--ink); }
   .meter i.on { background: var(--ink); }
+  /* Price sits opposite the taste meters: same top, same height, split by a hairline */
   .price {
-    position: absolute; right: 26px; top: 402px; text-align: right;
-    font: 700 26px/1 var(--sans); letter-spacing: -0.02em;
+    position: absolute; right: 26px; top: 358px; height: 58px; width: 150px;
+    border-left: 1px solid #d6d5d0;
+    display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;
   }
+  .price small { font: 500 12px/1 var(--mono); letter-spacing: 0.16em; color: var(--muted); }
+  .price b { font: 700 40px/0.74 var(--sans); letter-spacing: -0.03em; }
   .foot {
     position: absolute; left: 26px; right: 26px; bottom: 22px;
     border-top: 1px solid #d6d5d0; padding-top: 12px;
@@ -181,7 +185,7 @@ document.getElementById('board').innerHTML = cards.map((c) => `
           <span>바디</span>${meter(c.taste[1])}
           <span>단맛</span>${meter(c.taste[2])}
         </div>
-        <div class="price">HOT / ICED ${c.price}</div>
+        <div class="price"><small>HOT / ICED</small><b>${c.price}</b></div>
         <div class="foot"><span>EASTMAN FILM LAB</span><span>© 2026</span></div>
       </div>
     </div>
