@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Coffee Menu Print</title>
+<!-- Printable 8x10 in sheet of the menu cards in menu-cards.html (same design, no price).
+     Cards are drawn at their 840x526 design size and scaled with --k onto the page. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=block">
+<style>
+  :root {
+    --board: #141414;
+    --paper: #F7F6F2;
+    --ink: #111111;
+    --muted: #8A8A86;
+    --tile: #D9D6D0;
+    --sans: "Helvetica Neue", Inter, Arial, sans-serif;
+    --mono: "IBM Plex Mono", "DejaVu Sans Mono", monospace;
+    --kr: Pretendard, "Noto Sans KR", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: 8in 10in; margin: 0; }
+  body { background: #fff; }
+
+  /* Page 8x10 in (768x960 css px). 2 cols x 4 rows, 24px gaps, centered. */
+  .page { width: 768px; height: 960px; display: flex; align-items: center; justify-content: center; }
+  .sheet {
+    --k: 0.38; zoom: var(--k);
+    display: grid; grid-template-columns: repeat(2, 840px); grid-auto-rows: 526px;
+    gap: calc(24px / var(--k));
+  }
+  /* Black backing frames each card so it cuts out as one piece */
+  .unit { display: flex; align-items: flex-end; background: var(--board); }
+  .card {
+    width: 800px; height: 510px; position: relative; display: grid;
+    grid-template-columns: 112px 304px 384px; grid-template-rows: 8px 502px;
+  }
+  .accent { grid-column: 1 / -1; background: var(--c-accent); }
+
+  /* Left strip: identical barcode + checker on every card */
+  .strip { background: #000; position: relative; overflow: hidden; }
+  .strip .bars { position: absolute; left: 0; right: 0; top: 10px; }
+  .strip .bars i { display: block; background: #fff; margin-bottom: 7px; }
+  .strip .tiles {
+    position: absolute; left: 6px; bottom: 14px; display: grid;
+    grid-template-columns: repeat(2, 46px); grid-auto-rows: 46px; gap: 8px;
+  }
+  .strip .tiles b { background: var(--tile); }
+  .strip .tiles s { visibility: hidden; }
+
+  .art { position: relative; background: var(--c-art); overflow: hidden; }
+  .art svg { position: absolute; inset: 0; }
+
+  /* Info panel: fixed rows so every card lines up */
+  .info {
+    background: var(--paper); color: var(--ink); position: relative;
+    padding: 26px 26px 0 26px;
+  }
+  .chip { width: 14px; height: 14px; background: var(--c-accent); }
+  .num { font: 300 38px/1 var(--sans); color: #6d6d6a; margin-top: 12px; letter-spacing: -0.01em; }
+  .name { font: 700 50px/1 var(--sans); letter-spacing: -0.035em; margin-top: 8px; }
+  .meta { font: 400 16.5px/24px var(--mono); margin-top: 14px; letter-spacing: 0.01em; }
+  .notes { font: 400 15.5px/22px var(--kr); margin-top: 6px; letter-spacing: -0.01em; white-space: nowrap; }
+  .process {
+    position: absolute; left: 26px; right: 26px; top: 286px; height: 50px;
+    border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink);
+    display: flex; align-items: center; justify-content: space-between;
+    font: 400 22px/1 var(--sans); letter-spacing: -0.01em;
+  }
+  .process svg { height: 44px; width: 150px; }
+  .taste {
+    position: absolute; left: 26px; top: 358px; display: grid;
+    grid-template-columns: 34px auto; row-gap: 5px; align-items: center;
+    font: 500 14px/16px var(--kr);
+  }
+  .meter { display: block; }
+  .foot {
+    position: absolute; left: 26px; right: 26px; bottom: 22px;
+    border-top: 1px solid #d6d5d0; padding-top: 12px;
+    display: flex; justify-content: space-between;
+    font: 400 12px/1 var(--mono); letter-spacing: 0.16em; color: var(--muted);
+  }
+
+  /* Label rail: all labels start at the card's bottom edge */
+  .rail { width: 40px; position: relative; }
+  .rail span {
+    position: absolute; left: 50%; bottom: 0; transform-origin: 0 0;
+    transform: rotate(-90deg) translate(0, -50%);
+    white-space: nowrap; font: 500 13px/1 var(--mono); letter-spacing: 0.24em; color: #9b9b97;
+  }
+</style>
+</head>
+<body>
+<div class="page"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const BARS = [12, 6, 10, 4, 12, 8, 5, 12, 6, 10, 4, 9];          // same barcode on every card
+const TILES = '1001100110';                                         // 2-col checker, read row by row (1 = tile)
+
+const cards = [
+  { n: '01', name: 'Ethiopia', farm: 'Gedeb Wuri', process: 'Washed process', tag: 'washed',
+    notes: '은은한 꽃향기 · 달달한 호박차 · 캔디스윗', taste: [2, 4, 5], label: 'WASHED',
+    accent: '#F2C230', art: '#E9B830', line: '#C2462A', bracket: '#9A5A1E', motif: 'eye' },
+  { n: '02', name: 'Costa Rica', farm: 'El Milagro', process: 'Cinnamon Honey process', tag: 'honey',
+    notes: '기분 좋은 흙내음 · 블루베리 산미 · 밤꿀', taste: [3, 4, 4], label: 'CINNAMON HONEY',
+    accent: '#E37B34', art: '#DB7730', line: '#F6E6CF', bracket: '#F6E6CF', motif: 'rings' },
+  { n: '03', name: 'Colombia', farm: 'Potosi Dragons', process: 'Natural process', tag: 'natural',
+    notes: '적포도 · 크랜베리 주스 · 레드와인 · 초콜릿', taste: [4, 3, 2], label: 'NATURAL',
+    accent: '#7B2131', art: '#6A1D2B', line: '#E8A3B1', bracket: '#E8C3CB', motif: 'tunnel' },
+  { n: '04', name: 'Ethiopia', farm: 'Sidama Arbegona Charicho', process: 'Natural process', tag: 'natural',
+    notes: '블랙베리 · 캠벨포도 · 멜론 · 청량감', taste: [3, 5, 2], label: 'NATURAL',
+    accent: '#4C3DAA', art: '#3A2B92', line: '#A69CF0', bracket: '#D6D1F7', motif: 'orbit' },
+];
+
+const W = 304, H = 502;
+const grain = (id) => `
+  <filter id="g${id}"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="${id % 4}"/>
+  <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0"/></filter>`;
+
+function motif(c) {
+  const s = `fill="none" stroke="${c.line}" stroke-width="1.3"`;
+  let g = '';
+  if (c.motif === 'eye') {
+    const cx = 152, cy = 250;
+    for (let r = 28; r <= 158; r += 26) g += `<circle cx="${cx}" cy="${cy}" r="${r}" ${s} opacity=".85"/>`;
+    for (const a of [0, 30, 150]) g += `<ellipse cx="${cx}" cy="${cy}" rx="160" ry="62" transform="rotate(${a} ${cx} ${cy})" ${s}/>`;
+    g += `<ellipse cx="${cx}" cy="${cy}" rx="160" ry="108" ${s}/>`;
+    g += `<path d="M${cx} ${cy - 30} Q${cx + 6} ${cy - 6} ${cx + 30} ${cy} Q${cx + 6} ${cy + 6} ${cx} ${cy + 30} Q${cx - 6} ${cy + 6} ${cx - 30} ${cy} Q${cx - 6} ${cy - 6} ${cx} ${cy - 30}Z" fill="#1E9E68"/>`;
+  } else if (c.motif === 'rings') {
+    for (let row = 0; row < 4; row++) for (let col = 0; col < 3; col++)
+      g += `<circle cx="${40 + col * 112}" cy="${82 + row * 112}" r="64" ${s} opacity=".9"/>`;
+    g += `<circle cx="40" cy="130" r="36" fill="#F3DCC0"/>`;
+    g += `<circle cx="152" cy="246" r="62" fill="#2C0E06"/>`;
+    g += `<circle cx="264" cy="356" r="36" fill="#7C3415"/>`;
+  } else if (c.motif === 'tunnel') {
+    for (let i = 0; i < 11; i++) {
+      const x = 70 + i * 18, y = 380 - i * 26;
+      g += `<ellipse cx="${x}" cy="${y}" rx="62" ry="104" transform="rotate(38 ${x} ${y})" ${s} opacity=".85"/>`;
+    }
+    g += `<circle cx="58" cy="374" r="28" fill="#F2CCD4"/>`;
+  } else {
+    const cx = 216, cy = 214;
+    for (let r = 20; r <= 330; r += 22) g += `<circle cx="${cx}" cy="${cy}" r="${r}" ${s} opacity=".8"/>`;
+    g += `<circle cx="${cx}" cy="${cy}" r="18" fill="#B6E07A" stroke="#fff" stroke-width="2"/>`;
+  }
+  const b = `fill="none" stroke="${c.bracket}" stroke-width="2.5"`;
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <defs>${grain(c.id)}</defs>${g}
+    <path d="M20 50V20H50" ${b}/><path d="M${W - 50} ${H - 20}H${W - 20}V${H - 50}" ${b}/>
+    <rect width="${W}" height="${H}" filter="url(#g${c.id})" opacity=".18"/></svg>`;
+}
+
+const hatch = () => {
+  let l = '';
+  for (let i = 0; i < 15; i++) l += `<line x1="${10 + i * 9}" y1="42" x2="${34 + i * 9}" y2="2" stroke="#111" stroke-width="1.6"/>`;
+  return `<svg viewBox="0 0 150 44">${l}</svg>`;
+};
+// Drawn as SVG so the squares stay evenly spaced once scaled for print
+const meter = (v) => `<svg class="meter" width="98" height="16" viewBox="0 0 98 16">${[0, 1, 2, 3, 4].map((i) =>
+  `<rect x="${i * 20.5 + 1}" y="1" width="14" height="14" fill="${i < v ? '#111' : 'none'}" stroke="#111" stroke-width="2"/>`).join('')}</svg>`;
+
+document.getElementById('sheet').innerHTML = [...cards, ...cards].map((c, i) => `
+  <div class="unit" style="--c-accent:${c.accent};--c-art:${c.art}">
+    <div class="card">
+      <div class="accent"></div>
+      <div class="strip">
+        <div class="bars">${BARS.map((h) => `<i style="height:${h}px"></i>`).join('')}</div>
+        <div class="tiles">${[...TILES].map((t) => (t === '1' ? '<b></b>' : '<s></s>')).join('')}</div>
+      </div>
+      <div class="art">${motif({ ...c, id: i })}</div>
+      <div class="info">
+        <div class="chip"></div>
+        <div class="num">${c.n}</div>
+        <div class="name">${c.name}</div>
+        <div class="meta">${c.farm}<br>${c.process}</div>
+        <div class="notes">${c.notes}</div>
+        <div class="process"><span>[.${c.tag}]</span>${hatch()}</div>
+        <div class="taste">
+          <span>산미</span>${meter(c.taste[0])}
+          <span>바디</span>${meter(c.taste[1])}
+          <span>단맛</span>${meter(c.taste[2])}
+        </div>
+        <div class="foot"><span>EASTMAN FILM LAB</span><span>© 2026</span></div>
+      </div>
+    </div>
+    <div class="rail"><span>EASTMAN FILM LAB · EL-C-${c.n} · ${c.label}</span></div>
+  </div>`).join('');
+</script>
+</body>
+</html>
