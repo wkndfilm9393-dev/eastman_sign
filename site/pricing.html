@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>가격 · 견적 | Eastman Film Lab 이스트만랩</title>
+  <meta name="description" content="이스트만 필름랩 가격표. C-41 컬러 6.0부터, B&W 흑백 10.0부터, E-6 슬라이드 15.0, 인화 4×6 0.5. 롤 수와 화질을 고르면 예상 금액을 바로 계산해드려요.">
+  <meta name="theme-color" content="#F6853D">
+  <meta property="og:title" content="가격 · 견적 | Eastman Film Lab">
+  <meta property="og:image" content="img/marquee-poster.jpg">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body class="has-summary-bar">
+  <a class="skip" href="#main">본문으로 건너뛰기</a>
+
+  <header class="nav" aria-label="주 메뉴">
+    <a class="wordmark" href="index.html">Eastman Film Lab</a>
+    <nav class="nav__links">
+      <a href="pricing.html" aria-current="page">가격 Pricing</a>
+      <a href="pricing.html#estimate">견적 Estimate</a>
+      <a href="guide.html">이용안내 Guide</a>
+      <a href="guide.html#faq">FAQ</a>
+    </nav>
+    <a class="btn btn--primary nav__cta" href="https://pf.kakao.com/_WFTBX/chat" target="_blank" rel="noopener">
+      <svg class="icon" aria-hidden="true"><use href="img/icons.svg#chat"/></svg>카카오톡 문의
+    </a>
+    <button class="nav__toggle" type="button" aria-expanded="false" aria-label="메뉴 열기">
+      <svg class="icon" aria-hidden="true"><use href="img/icons.svg#menu"/></svg>
+    </button>
+  </header>
+
+  <main id="main">
+    <section class="page-head on-ink">
+      <div class="wrap">
+        <p class="label">Price List 가격표</p>
+        <h1>가격 · 견적</h1>
+        <p class="muted">매장 가격표와 같은 가격이에요. 아래에서 롤 수와 화질을 고르면 예상 금액을 바로 계산해드려요.</p>
+      </div>
+    </section>
+
+    <!--
+      Price list. This is the single source of prices: the estimate builder reads each
+      [data-price] cell, so update a price here and the builder follows.
+      Values match assets/reference/price-list-orange.png. 1.0 = 1,000원 (see data-unit on #builder).
+    -->
+    <section class="section on-ink" style="padding-top:0">
+      <div class="wrap">
+        <hr class="rule" style="margin-bottom:56px">
+        <div class="price-groups">
+          <div id="c41">
+            <div class="price-group__head"><h2 class="label">C-41 컬러 현상/스캔</h2></div>
+            <ul>
+              <li class="price-row"><span class="price-row__name">Basic 일반화질</span><span class="price" data-price="c41.35.basic">6.0</span><span class="price-row__sub muted">JPEG, 3000 × 2000 px</span></li>
+              <li class="price-row"><span class="price-row__name">High 고화질</span><span class="price" data-price="c41.35.high">12.0</span><span class="price-row__sub muted">JPEG, 6700 × 4400 px</span></li>
+              <li class="price-row"><span class="price-row__name">120 Medium Format 중형필름</span><span class="price" data-price="c41.120">10.0</span></li>
+            </ul>
+          </div>
+          <div id="bw">
+            <div class="price-group__head"><h2 class="label">B&amp;W 흑백 현상/스캔</h2><span class="muted">*흑백필름은 수작업으로 시간이 하루 이상 소요됩니다.</span></div>
+            <ul>
+              <li class="price-row"><span class="price-row__name">Basic 일반화질</span><span class="price" data-price="bw.35.basic">10.0</span><span class="price-row__sub muted">JPEG, 3000 × 2000 px</span></li>
+              <li class="price-row"><span class="price-row__name">High 고화질</span><span class="price" data-price="bw.35.high">15.0</span><span class="price-row__sub muted">JPEG, 6700 × 4400 px</span></li>
+              <li class="price-row"><span class="price-row__name">120 Medium Format 중형필름</span><span class="price" data-price="bw.120">12.0</span></li>
+            </ul>
+          </div>
+          <div id="e6">
+            <div class="price-group__head"><h2 class="label">E-6 슬라이드</h2></div>
+            <ul>
+              <li class="price-row"><span class="price-row__name">E-6 Slide 포지티브 필름</span><span class="price" data-price="e6">15.0</span></li>
+            </ul>
+          </div>
+          <div id="print">
+            <div class="price-group__head"><h2 class="label">Print 인화</h2><span class="muted">장당</span></div>
+            <ul>
+              <li class="price-row"><span class="price-row__name">4 × 6 inch size</span><span class="price" data-price="print.4x6">0.5</span></li>
+              <li class="price-row"><span class="price-row__name">3 × 5 inch size</span><span class="price" data-price="print.3x5">0.4</span></li>
+              <li class="price-row"><span class="price-row__name">5 × 7 inch size</span><span class="price" data-price="print.5x7">0.7</span></li>
+            </ul>
+          </div>
+        </div>
+        <ul class="notes muted price-unit">
+          <li>가격 단위: 1.0 = 1,000원</li>
+          <li>일반적으로 신청해주시는 현상+스캔은 사진 인화가 포함되어 있지 않습니다. 꼭 확인해주세요 :)</li>
+          <li>스캔 완료된 ZIP 파일은 카카오톡 채널로 보내드립니다.</li>
+          <li>보관 요청을 하신 필름의 보관 기한은 한 달이며, 그 기간을 초과한 필름은 폐기됩니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Estimate builder -->
+    <section class="section on-orange" id="estimate">
+      <div class="wrap">
+        <div class="section__head">
+          <p class="label">Estimate 견적</p>
+          <h2 class="section__title">예상 금액 계산</h2>
+          <p class="section__lede">필름 종류와 화질, 롤 수를 고르세요. 실제 금액은 접수할 때 확인해드려요.</p>
+        </div>
+
+        <form class="builder" id="builder" data-unit="1000" onsubmit="return false">
+          <div>
+            <fieldset id="q-process">
+              <legend class="label">01 필름 종류 Process</legend>
+              <div class="opts">
+                <label class="opt"><input type="radio" name="process" value="c41" checked><span>C-41 컬러<small>컬러 네거티브</small></span></label>
+                <label class="opt"><input type="radio" name="process" value="bw"><span>B&amp;W 흑백<small>하루 이상 소요</small></span></label>
+                <label class="opt"><input type="radio" name="process" value="e6"><span>E-6 슬라이드<small>포지티브 필름</small></span></label>
+              </div>
+            </fieldset>
+
+            <fieldset id="q-format">
+              <legend class="label">02 필름 규격 Format</legend>
+              <div class="opts">
+                <label class="opt"><input type="radio" name="format" value="35" checked><span>35mm</span></label>
+                <label class="opt"><input type="radio" name="format" value="120"><span>120 중형필름<small>Medium Format</small></span></label>
+              </div>
+            </fieldset>
+
+            <fieldset id="q-quality">
+              <legend class="label">03 스캔 화질 Scan</legend>
+              <div class="opts">
+                <label class="opt"><input type="radio" name="quality" value="basic" checked><span>Basic 일반화질<small>JPEG 3000 × 2000</small></span></label>
+                <label class="opt"><input type="radio" name="quality" value="high"><span>High 고화질<small>JPEG 6700 × 4400</small></span></label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend class="label">04 롤 수 Rolls</legend>
+              <div class="stepper-row">
+                <div class="stepper" data-count="rolls" data-min="1" data-max="50">
+                  <button type="button" data-step="-1" aria-label="롤 수 줄이기">−</button>
+                  <output aria-live="polite">1</output>
+                  <button type="button" data-step="1" aria-label="롤 수 늘리기">+</button>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend class="label">05 인화 Print (선택)</legend>
+              <div class="stepper-row">
+                <div class="stepper" data-count="prints" data-min="0" data-max="500">
+                  <button type="button" data-step="-1" aria-label="인화 장수 줄이기">−</button>
+                  <output aria-live="polite">0</output>
+                  <button type="button" data-step="1" aria-label="인화 장수 늘리기">+</button>
+                </div>
+                <span class="muted">장. 인화가 필요 없으면 0으로 두세요.</span>
+              </div>
+            </fieldset>
+
+            <fieldset id="q-print-size" hidden>
+              <legend class="label">인화 사이즈 Size</legend>
+              <div class="opts">
+                <label class="opt"><input type="radio" name="print" value="4x6" checked><span>4 × 6</span></label>
+                <label class="opt"><input type="radio" name="print" value="3x5"><span>3 × 5</span></label>
+                <label class="opt"><input type="radio" name="print" value="5x7"><span>5 × 7</span></label>
+              </div>
+            </fieldset>
+          </div>
+
+          <aside class="summary" aria-live="polite">
+            <p class="label">예상 금액</p>
+            <ul class="summary__lines" id="summary-lines"></ul>
+            <div class="summary__total"><span>합계</span><strong id="summary-total">₩0</strong></div>
+            <a class="btn btn--primary" href="https://pf.kakao.com/_WFTBX/chat" target="_blank" rel="noopener">
+              <svg class="icon" aria-hidden="true"><use href="img/icons.svg#chat"/></svg>카카오톡으로 문의
+            </a>
+            <ul class="notes">
+              <li>매장 가격표 기준 예상 금액이에요.</li>
+              <li>인화 신청 방법은 카카오톡 채널에 자세히 나와 있어요.</li>
+            </ul>
+          </aside>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer on-ink">
+    <div class="wrap">
+      <div class="footer__top">
+        <a class="wordmark" href="index.html">Eastman Film Lab<small>film develop service</small></a>
+        <div class="footer__cols">
+          <div>
+            <p class="label">Menu</p>
+            <ul>
+              <li><a href="pricing.html">가격 Pricing</a></li>
+              <li><a href="pricing.html#estimate">견적 Estimate</a></li>
+              <li><a href="guide.html">이용안내 Guide</a></li>
+            </ul>
+          </div>
+          <div>
+            <p class="label">Contact</p>
+            <ul>
+              <li><a href="https://pf.kakao.com/_WFTBX" target="_blank" rel="noopener">카카오톡 이스트만랩</a></li>
+              <li><a href="https://www.instagram.com/eastman_lab/" target="_blank" rel="noopener">Instagram</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="footer__bottom muted">
+        <span class="handle">@EASTMAN_LAB</span>
+        <span>*추가적인 질문이나 문의사항은 카운터 직원이나 카카오톡으로 부탁드립니다 :)</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/site.js" defer></script>
+</body>
+</html>

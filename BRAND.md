@@ -69,7 +69,7 @@ The neon wall sign in `designs/neon-signs/` uses **Neon Red-Orange `#FF5A2C`** f
 ## Layout conventions
 
 - Left-aligned wordmark block at top-left, followed by a full-width hairline divider.
-- Price rows: name on the left, price right-aligned (flush right), same size and weight. Prices use one decimal (`6.0`, `0.5`) and no currency symbol, since the unit is implied as ₩10,000.
+- Price rows: name on the left, price right-aligned (flush right), same size and weight. Prices use one decimal (`6.0`, `0.5`) and no currency symbol, since the unit is implied as ₩1,000 (`6.0` = 6,000원).
 - Sub-line directly under the item name in a tint color. Sections are separated by generous vertical space rather than boxes.
 - Numbered steps (`01`, `02`, `03`) in the label style, with outlined line icons (film canister → film strip → JPG → print) drawn in ink at a consistent stroke weight.
 - A hairline divider comes before the footer notes. Footnotes start with `*`.
